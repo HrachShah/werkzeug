@@ -145,7 +145,7 @@ class Request:
     def __repr__(self) -> str:
         try:
             url = self.url
-        except Exception as e:
+        except AttributeError as e:
             url = f"(invalid URL: {e})"
 
         return f"<{type(self).__name__} {url!r} [{self.method}]>"

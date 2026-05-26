@@ -217,7 +217,7 @@ class DebugReprGenerator:
     def fallback_repr(self) -> str:
         try:
             info = "".join(format_exception_only(*sys.exc_info()[:2]))
-        except Exception:
+        except (ValueError, TypeError):
             info = "?"
         return (
             '<span class="brokenrepr">'
