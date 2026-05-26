@@ -145,8 +145,11 @@ class Request:
     def __repr__(self) -> str:
         try:
             url = self.url
-        except Exception as e:
+        except ValueError as e:
+            # get_current_url raises ValueError for invalid URL components
             url = f"(invalid URL: {e})"
+        except UnicodeEncodeError as e:
+            url = f"(invalid URL encoding: {e})"
 
         return f"<{type(self).__name__} {url!r} [{self.method}]>"
 
