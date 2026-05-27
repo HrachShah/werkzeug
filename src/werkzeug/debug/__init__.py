@@ -367,10 +367,9 @@ class DebuggedApplication:
             try:
                 yield from response(environ, start_response)
             except Exception:
-                # if we end up here there has been output but an error
-                # occurred.  in that situation we can do nothing fancy any
-                # more, better log something into the error log and fall
-                # back gracefully.
+                # Response write failure after app exception — wsgi.errors.write
+                # raises OSError/ValueError/TypeError here; intentionally broad
+                # since the original exception is already being logged above.
                 environ["wsgi.errors"].write(
                     "Debugging middleware caught exception in streamed "
                     "response at a point where response headers were already "
