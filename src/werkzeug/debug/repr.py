@@ -234,7 +234,7 @@ class DebugReprGenerator:
         try:
             try:
                 return self.dispatch_repr(obj, recursive)
-            except Exception:
+            except (AttributeError, TypeError):
                 return self.fallback_repr()
         finally:
             self._stack.pop()
@@ -257,7 +257,7 @@ class DebugReprGenerator:
             for key in dir(obj):
                 try:
                     items.append((key, self.repr(getattr(obj, key))))
-                except Exception:
+                except AttributeError:
                     pass
             title = "Details for"
         title += f" {object.__repr__(obj)[1:-1]}"
