@@ -175,7 +175,7 @@ class _InteractiveConsole(code.InteractiveInterpreter):
     def runcode(self, code: CodeType) -> None:
         try:
             exec(code, self.locals)
-        except Exception:
+        except (SyntaxError, ValueError, TypeError, NameError):
             self.showtraceback()
 
     def showtraceback(self) -> None:

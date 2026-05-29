@@ -217,7 +217,7 @@ class DebugReprGenerator:
     def fallback_repr(self) -> str:
         try:
             info = "".join(format_exception_only(*sys.exc_info()[:2]))
-        except Exception:
+        except OSError:
             info = "?"
         return (
             '<span class="brokenrepr">'
@@ -234,7 +234,7 @@ class DebugReprGenerator:
         try:
             try:
                 return self.dispatch_repr(obj, recursive)
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
                 return self.fallback_repr()
         finally:
             self._stack.pop()
@@ -257,7 +257,7 @@ class DebugReprGenerator:
             for key in dir(obj):
                 try:
                     items.append((key, self.repr(getattr(obj, key))))
-                except Exception:
+                except AttributeError:
                     pass
             title = "Details for"
         title += f" {object.__repr__(obj)[1:-1]}"

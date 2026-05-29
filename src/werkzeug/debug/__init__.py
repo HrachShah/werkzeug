@@ -535,6 +535,16 @@ class DebuggedApplication:
             _log("info", " * Debugger pin code: %s", self.pin)
         return Response("")
 
+    def _handle_show_traceback(self, environ: WSGIEnvironment) -> None:
+        """Handle a traceback render inside the debugger middleware."""
+        from .tbtools import DebugTraceback
+
+        exc = sys.exc_info()[1]
+        if exc is None:
+            return
+        tb = DebugTraceback(exc, skip=1)
+        environ["wsgi.errors"].write("".join(tb.render_traceback_text()))
+
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse
     ) -> t.Iterable[bytes]:
