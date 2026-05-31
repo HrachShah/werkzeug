@@ -383,7 +383,7 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
                     status_set = None
                     headers_set = None
                 execute(InternalServerError())
-            except Exception:
+            except (OSError, RuntimeError, ValueError, TypeError):
                 pass
 
             from .debug.tbtools import DebugTraceback
