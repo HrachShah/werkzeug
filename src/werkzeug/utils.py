@@ -499,6 +499,12 @@ def send_file(
         data, mimetype=mimetype, headers=headers, direct_passthrough=True
     )
 
+    # If the WSGI server's file_wrapper takes ownership of `file` but does not
+    # close it (some servers only iterate), the file handle would leak. Register
+    # an on_close callback so that Response.close() always releases the handle.
+    if file is not None and not hasattr(data, "close"):
+        rv.call_on_close(file.close)
+
     if size is not None:
         rv.content_length = size
 

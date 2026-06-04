@@ -199,3 +199,56 @@ def test_max_age_callable():
     # This is a private API, it should only be used by Flask.
     with send_file(txt_path, environ, max_age=lambda p: 10) as rv:
         assert rv.cache_control.max_age == 10
+
+
+class _NoCloseFileWrapper:
+    """A WSGI file_wrapper that iterates the file but does not close it.
+
+    This simulates a WSGI server that takes ownership of the file handle
+    opened by send_file but never closes it. The file handle would leak
+    unless send_file registers an on_close callback for it.
+    """
+
+    def __init__(self, file, buffer_size=8192):
+        self.file = file
+        self.buffer_size = buffer_size
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        data = self.file.read(self.buffer_size)
+        if not data:
+            raise StopIteration
+        return data
+
+
+def test_file_handle_closed_with_no_close_wrapper(tmp_path):
+    # When a WSGI server provides a file_wrapper that does not close the
+    # underlying file, send_file must still close the handle it opened. The
+    # fix is to register file.close as an on_close callback on the response.
+    p = tmp_path / "data.txt"
+    p.write_bytes(b"x" * 10000)
+
+    env = create_environ()
+    env["wsgi.file_wrapper"] = _NoCloseFileWrapper
+
+    rv = send_file(str(p), env, conditional=False)
+    assert isinstance(rv.response, _NoCloseFileWrapper)
+    assert not rv.response.file.closed
+    rv.close()
+    assert rv.response.file.closed
+
+
+def test_file_handle_not_double_closed(tmp_path):
+    # When the WSGI file_wrapper has a close method (Werkzeug's built-in
+    # FileWrapper), it owns the close. send_file should not register a
+    # second on_close for the same file handle.
+    p = tmp_path / "data.txt"
+    p.write_bytes(b"x" * 10000)
+
+    rv = send_file(str(p), environ, conditional=False)
+    rv.close()
+    # Calling close() again should not raise (file.close() on a closed file
+    # is a no-op for binary file objects).
+    rv.close()
