@@ -482,12 +482,21 @@ def send_file(
             " 'download_name' or pass a path instead of a file."
         )
 
+    # Track whether this function opened the file. If it did and any code
+    # between the open and a successful return raises, the file handle must
+    # be closed before propagating the exception, otherwise it leaks until
+    # garbage collection closes it. The response normally takes ownership of
+    # the file via FileWrapper and closes it once the iterator is consumed,
+    # so we only need to close on the failure path.
+    we_opened_file = False
+
     if use_x_sendfile and path is not None:
         headers["X-Sendfile"] = path
         data = None
     else:
         if file is None:
             file = open(path, "rb")  # type: ignore
+            we_opened_file = True
         elif isinstance(file, io.BytesIO):
             size = file.getbuffer().nbytes
         elif isinstance(file, io.TextIOBase):
@@ -495,54 +504,64 @@ def send_file(
 
         data = wrap_file(environ, file)
 
-    rv = response_class(
-        data, mimetype=mimetype, headers=headers, direct_passthrough=True
-    )
+    try:
+        rv = response_class(
+            data, mimetype=mimetype, headers=headers, direct_passthrough=True
+        )
 
-    if size is not None:
-        rv.content_length = size
+        if size is not None:
+            rv.content_length = size
 
-    if last_modified is not None:
-        rv.last_modified = last_modified  # type: ignore
-    elif mtime is not None:
-        rv.last_modified = mtime  # type: ignore
+        if last_modified is not None:
+            rv.last_modified = last_modified  # type: ignore
+        elif mtime is not None:
+            rv.last_modified = mtime  # type: ignore
 
-    rv.cache_control.no_cache = True
+        rv.cache_control.no_cache = True
 
-    # Flask will pass app.get_send_file_max_age, allowing its send_file
-    # wrapper to not have to deal with paths.
-    if callable(max_age):
-        max_age = max_age(path)
+        # Flask will pass app.get_send_file_max_age, allowing its send_file
+        # wrapper to not have to deal with paths.
+        if callable(max_age):
+            max_age = max_age(path)
 
-    if max_age is not None:
-        if max_age > 0:
-            rv.cache_control.no_cache = None
-            rv.cache_control.public = True
+        if max_age is not None:
+            if max_age > 0:
+                rv.cache_control.no_cache = None
+                rv.cache_control.public = True
 
-        rv.cache_control.max_age = max_age
-        rv.expires = int(time() + max_age)  # type: ignore
+            rv.cache_control.max_age = max_age
+            rv.expires = int(time() + max_age)  # type: ignore
 
-    if isinstance(etag, str):
-        rv.set_etag(etag)
-    elif etag and path is not None:
-        check = adler32(path.encode()) & 0xFFFFFFFF
-        rv.set_etag(f"{mtime}-{size}-{check}")
+        if isinstance(etag, str):
+            rv.set_etag(etag)
+        elif etag and path is not None:
+            check = adler32(path.encode()) & 0xFFFFFFFF
+            rv.set_etag(f"{mtime}-{size}-{check}")
 
-    if conditional:
-        try:
-            rv = rv.make_conditional(environ, accept_ranges=True, complete_length=size)
-        except RequestedRangeNotSatisfiable:
-            if file is not None:
-                file.close()
+        if conditional:
+            try:
+                rv = rv.make_conditional(
+                    environ, accept_ranges=True, complete_length=size
+                )
+            except RequestedRangeNotSatisfiable:
+                if file is not None:
+                    file.close()
+                raise
 
-            raise
+            # Some x-sendfile implementations incorrectly ignore the 304
+            # status code and send the file anyway.
+            if rv.status_code == 304:
+                rv.headers.pop("X-Sendfile", None)
 
-        # Some x-sendfile implementations incorrectly ignore the 304
-        # status code and send the file anyway.
-        if rv.status_code == 304:
-            rv.headers.pop("X-Sendfile", None)
-
-    return rv
+        return rv
+    except Exception:
+        # Close the file we opened in this function before re-raising so the
+        # file handle is not leaked when an unexpected exception bubbles out
+        # of response_class, make_conditional, the max_age callback, etag
+        # generation, or any other code path between the open and the return.
+        if we_opened_file and file is not None:
+            file.close()
+        raise
 
 
 def send_from_directory(
