@@ -58,7 +58,12 @@ def _hash_internal(method: str, salt: str, password: str) -> tuple[str, str]:
             iterations = DEFAULT_PBKDF2_ITERATIONS
         elif len_args == 2:
             hash_name = args[0]
-            iterations = int(args[1])
+            try:
+                iterations = int(args[1])
+            except ValueError:
+                raise ValueError(
+                    "'pbkdf2' iterations must be an integer."
+                ) from None
         else:
             raise ValueError("'pbkdf2' takes 2 arguments.")
 
