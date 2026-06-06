@@ -42,6 +42,18 @@ def test_invalid_method():
         generate_password_hash("secret", "sha256")
 
 
+def test_pbkdf2_invalid_iterations():
+    with pytest.raises(
+        ValueError, match=r"'pbkdf2' iterations must be an integer"
+    ):
+        generate_password_hash("secret", "pbkdf2:sha256:notanumber")
+
+
+def test_scrypt_invalid_arguments():
+    with pytest.raises(ValueError, match=r"'scrypt' takes 3 arguments"):
+        generate_password_hash("secret", "scrypt:notanumber")
+
+
 @pytest.mark.parametrize(
     ("path", "expect"),
     [
