@@ -346,7 +346,7 @@ class DebuggedApplication:
             yield from app_iter
             if hasattr(app_iter, "close"):
                 app_iter.close()
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             if hasattr(app_iter, "close"):
                 app_iter.close()  # type: ignore
 
@@ -366,7 +366,7 @@ class DebuggedApplication:
 
             try:
                 yield from response(environ, start_response)
-            except Exception:
+            except (OSError, ValueError, TypeError):
                 # if we end up here there has been output but an error
                 # occurred.  in that situation we can do nothing fancy any
                 # more, better log something into the error log and fall
