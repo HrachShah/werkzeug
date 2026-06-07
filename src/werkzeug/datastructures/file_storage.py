@@ -122,10 +122,18 @@ class FileStorage:
                 dst.close()
 
     def close(self) -> None:
-        """Close the underlying file if possible."""
+        """Close the underlying file if possible.
+
+        Only swallows :class:`OSError` (and its base :class:`ValueError` for
+        :class:`io.BufferedIOBase` close edge cases like an already-closed
+        stream) raised by ``self.stream.close()``. The previous bare
+        ``except Exception: pass`` also silently discarded unrelated
+        bugs (e.g. an ``AttributeError`` if ``self.stream`` was set to
+        ``None``) which made those bugs invisible to callers.
+        """
         try:
             self.stream.close()
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     def __bool__(self) -> bool:
