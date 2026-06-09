@@ -217,7 +217,12 @@ class DebugReprGenerator:
     def fallback_repr(self) -> str:
         try:
             info = "".join(format_exception_only(*sys.exc_info()[:2]))
-        except Exception:
+        except (TypeError, ValueError, AttributeError):
+            # format_exception_only can choke on exception objects whose
+            # __str__ raises (e.g. a custom Exception subclass that itself
+            # throws in __init__). The TypeError/ValueError/AttributeError
+            # trio covers the documented failure modes; anything else
+            # indicates a deeper bug and should surface.
             info = "?"
         return (
             '<span class="brokenrepr">'
@@ -257,7 +262,11 @@ class DebugReprGenerator:
             for key in dir(obj):
                 try:
                     items.append((key, self.repr(getattr(obj, key))))
-                except Exception:
+                except AttributeError:
+                    # dir() can return names whose property access raises.
+                    # Skip them — the dump already shows the type and id
+                    # of the parent object, and the missing attribute is
+                    # not relevant to the debugger view.
                     pass
             title = "Details for"
         title += f" {object.__repr__(obj)[1:-1]}"
