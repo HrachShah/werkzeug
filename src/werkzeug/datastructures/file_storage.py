@@ -125,7 +125,12 @@ class FileStorage:
         """Close the underlying file if possible."""
         try:
             self.stream.close()
-        except Exception:
+        except OSError:
+            # The file may already be closed (SpooledTemporaryFile rolls to
+            # disk and the file is unlinked; the underlying fd can have been
+            # reused by the time we close it), or the filesystem may refuse
+            # the close on a network mount. The caller asked us to close, we
+            # tried, that is the best we can do.
             pass
 
     def __bool__(self) -> bool:

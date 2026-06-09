@@ -145,7 +145,13 @@ class Request:
     def __repr__(self) -> str:
         try:
             url = self.url
-        except Exception as e:
+        except (ValueError, AttributeError, TypeError) as e:
+            # self.url is built from url_unparse + url_quote on the path bytes
+            # and the host string. Bad input can produce ValueError from the
+            # URL parser, AttributeError if a parsed component is None, or
+            # TypeError if a non-string slipped in. Anything else (IOError,
+            # RuntimeError, a typo in our own code) should bubble up so we
+            # notice the bug instead of swallowing it.
             url = f"(invalid URL: {e})"
 
         return f"<{type(self).__name__} {url!r} [{self.method}]>"

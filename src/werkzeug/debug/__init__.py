@@ -366,11 +366,14 @@ class DebuggedApplication:
 
             try:
                 yield from response(environ, start_response)
-            except Exception:
-                # if we end up here there has been output but an error
-                # occurred.  in that situation we can do nothing fancy any
-                # more, better log something into the error log and fall
-                # back gracefully.
+            except OSError:
+                # If we end up here there has been output but an error
+                # occurred writing the streamed 500 page to the client. In
+                # that situation we can do nothing fancy any more, so just
+                # log to the WSGI error stream and let the server close the
+                # connection. OSError covers socket-broken / EPIPE on the
+                # response write; anything else is a debugger bug and
+                # should not be silently swallowed.
                 environ["wsgi.errors"].write(
                     "Debugging middleware caught exception in streamed "
                     "response at a point where response headers were already "
