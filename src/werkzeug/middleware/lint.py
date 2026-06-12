@@ -220,7 +220,16 @@ class GuardedIterator:
                     WSGIWarning,
                     stacklevel=2,
                 )
-            except Exception:
+            except (ValueError, UnicodeDecodeError, MemoryError):
+                # warn() can fail in three realistic ways: the global warning
+                # filters can raise if the WSGI app installed an invalid
+                # filter (ValueError), the source encoding can fail when
+                # stacklevel=2 resolves to a __del__ frame with no source
+                # file (UnicodeDecodeError), and the warning can be a
+                # MemoryError if a circular reference holds a giant object
+                # (kept here as a real safety net, since __del__ should
+                # never raise). Any other failure is intentionally swallowed
+                # to keep the GC path quiet.
                 pass
 
 

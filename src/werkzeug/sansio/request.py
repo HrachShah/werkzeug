@@ -145,7 +145,16 @@ class Request:
     def __repr__(self) -> str:
         try:
             url = self.url
-        except Exception as e:
+        except (SecurityError, UnicodeDecodeError, ValueError, TypeError) as e:
+            # self.url is built from scheme + host + path + query_string, and
+            # get_host() (called transitively) raises werkzeug.SecurityError
+            # when the Host header doesn't match trusted_hosts. Other
+            # realistic failures are UnicodeDecodeError from get_host()'s
+            # IDNA encoding path on a hand-crafted malformed Host header, and
+            # ValueError from the f-string join when one of the components is
+            # None (e.g. an HTTP/0.9 request with no server address).
+            # Catching those keeps the debug-friendly repr stable; anything
+            # else (MemoryError, RecursionError) still propagates.
             url = f"(invalid URL: {e})"
 
         return f"<{type(self).__name__} {url!r} [{self.method}]>"
