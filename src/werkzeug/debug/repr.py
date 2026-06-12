@@ -257,7 +257,19 @@ class DebugReprGenerator:
             for key in dir(obj):
                 try:
                     items.append((key, self.repr(getattr(obj, key))))
-                except Exception:
+                except (AttributeError, TypeError, ValueError):
+                    # AttributeError: getattr with default can still raise
+                    # if the object raises on attribute access (e.g. a
+                    # property that raises a domain-specific error).
+                    # TypeError: descriptors that take wrong arg shapes.
+                    # ValueError: properties that validate input.
+                    # The bare except: previously also caught
+                    # KeyboardInterrupt and SystemExit, which should
+                    # propagate, and silently swallowed any future bug
+                    # introduced into the getattr/repr path. The narrow
+                    # tuple keeps the documented 'skip unfriendly attrs'
+                    # behavior for the three real attribute-access failure
+                    # modes while letting real bugs surface.
                     pass
             title = "Details for"
         title += f" {object.__repr__(obj)[1:-1]}"
