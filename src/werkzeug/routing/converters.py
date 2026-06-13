@@ -231,7 +231,23 @@ class FloatConverter(NumberConverter):
 
     def to_url(self, value: t.Any) -> str:
         # f format ensures no scientific notation, but forces trailing zeroes
-        return f"{self.num_convert(value):f}".rstrip("0")
+        # that we want to strip. The previous `.rstrip("0")` was a global
+        # rstrip on the whole string, which also stripped legitimate zeros
+        # from the integer part (so 1000.0 became "1000.") and from a whole-
+        # number expansion (so 0.0 became "0." and 1.0 became "1."). Those
+        # results don't match the converter's own regex \d+\.\d+, which
+        # requires at least one digit after the dot, so url_for(0.0)
+        # produced a URL that the same Map's match() then refused to find,
+        # silently breaking the roundtrip. Strip zeros only on the
+        # fractional side; if the fractional part was entirely zeros, leave
+        # a single "0" in place so the output always has the ".0" suffix
+        # the regex expects.
+        formatted = f"{self.num_convert(value):f}"
+        if "." in formatted:
+            integer, _, fractional = formatted.partition(".")
+            fractional = fractional.rstrip("0") or "0"
+            return f"{integer}.{fractional}"
+        return formatted
 
 
 class UUIDConverter(BaseConverter):

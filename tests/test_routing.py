@@ -493,6 +493,30 @@ def test_float_no_scientific():
     assert "e" not in adapter.build("a", {"v": 0.00001})
 
 
+def test_float_to_url_roundtrip():
+    # Regression test: FloatConverter.to_url() used `rstrip("0")` on the full
+    # formatted string, which also stripped legitimate zeros from the integer
+    # part and from the integer side of a whole-number expansion. As a result
+    # url_for(0.0) returned "/0.", url_for(1.0) returned "/1.", and url_for(1000.0)
+    # returned "/1000." — none of which match the converter's own regex
+    # \\d+\\.\\d+ (which requires at least one digit after the dot), so the same
+    # Map's match() then refused to find them and the roundtrip silently broke.
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example")
+    for value in (0.0, 1.0, 10.0, 100.0, 1000.0, 0.5, 1.5, 12.5, 0.0001, 0.001234, 123.456):
+        url = adapter.build("a", {"v": value})
+        assert "." in url, f"to_url({value!r}) dropped the decimal point: {url!r}"
+        # The built URL must end with a fractional digit so the converter's
+        # own regex \d+\.\d+ can match it on the way back in.
+        assert url[-1].isdigit(), (
+            f"to_url({value!r}) produced {url!r}, which would not match the"
+            f" \\d+\\.\\d+ regex"
+        )
+        endpoint, vals = adapter.match(url)
+        assert endpoint == "a"
+        assert vals == {"v": value}
+
+
 def test_greedy():
     map = r.Map(
         [
