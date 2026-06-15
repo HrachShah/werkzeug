@@ -1094,6 +1094,45 @@ class TestFileStorage:
         with path.open("rb") as src:
             assert src.read() == b"one\ntwo"
 
+    def test_guess_filename_tolerates_name_attribute_raising(self):
+        """``_guess_filename`` (called from ``FileStorage.__init__`` and
+        ``FileMultiDict.add_file``) used to do a bare
+        ``getattr(stream, "name", None)`` followed by ``fsdecode(filename)``,
+        but if ``stream.name`` is a property that itself raises
+        (``AttributeError`` for a stream that has since lost its backing
+        fd, or ``OSError`` for a closed pipe / broken subprocess handle)
+        the exception bubbled all the way out of ``FileStorage.__init__``,
+        crashing the form parse with an unexpected traceback instead of
+        just leaving the filename unset.
+        """
+
+        class _StreamNameRaisesAttributeError:
+            def read(self) -> bytes:
+                return b"data"
+
+            @property
+            def name(self) -> str:
+                raise AttributeError("name lost")
+
+        class _StreamNameRaisesOSError:
+            def read(self) -> bytes:
+                return b"data"
+
+            @property
+            def name(self) -> str:
+                raise OSError("closed pipe")
+
+        # A stream whose .name property raises should now fall through to
+        # a None filename rather than crashing FileStorage.__init__.
+        assert self.storage_class(_StreamNameRaisesAttributeError()).filename is None
+        assert self.storage_class(_StreamNameRaisesOSError()).filename is None
+
+        # An explicit filename must still win over a missing/raising name.
+        storage = self.storage_class(
+            _StreamNameRaisesOSError(), filename="upload.bin"
+        )
+        assert storage.filename == "upload.bin"
+
 
 @pytest.mark.parametrize("ranges", ([(0, 1), (-5, None)], [(5, None)]))
 def test_range_to_header(ranges):

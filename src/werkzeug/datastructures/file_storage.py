@@ -220,7 +220,17 @@ def _guess_filename(stream: t.IO[t.Any], filename: str | None) -> str | None:
     if filename is not None:
         return fsdecode(filename)
 
-    filename = getattr(stream, "name", None)
+    # ``getattr(stream, "name", None)`` raises if ``name`` is a property that
+    # itself raises (e.g. a wrapped file-like whose backing fd was already
+    # closed and whose ``name`` property surfaces the OSError). Such streams
+    # are uncommon in tests but real in production: cgi.FieldStorage-style
+    # wrappers, subprocess pipes, and pyfile-like shims all hit this path.
+    # Treat it the same as "no name attribute" so FileStorage.__init__ keeps
+    # working with a None filename instead of crashing the form parse.
+    try:
+        filename = getattr(stream, "name", None)
+    except (AttributeError, OSError):
+        filename = None
 
     if filename is not None:
         filename = fsdecode(filename)
