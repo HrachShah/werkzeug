@@ -1069,6 +1069,52 @@ class TestFileStorage:
         finally:
             file_storage.close()
 
+    def test_close_swallows_oserror_from_already_closed_fd(self, tmp_path):
+        """If the underlying fd is already closed (EBADF), FileStorage.close()
+        must still succeed — the stream is closed from the caller's
+        perspective and any further error is a no-op.
+        """
+        import os
+
+        path = tmp_path / "blob.bin"
+        path.write_bytes(b"x" * 8)
+
+        with path.open("rb") as raw:
+            storage = self.storage_class(stream=raw)
+            os.close(raw.fileno())  # close fd at the OS level
+            # close() must not propagate EBADF
+            storage.close()
+
+    def test_close_swallows_value_error_from_stream(self):
+        """Some custom IO subclasses raise ValueError from close() when the
+        stream is already closed. FileStorage.close() must not propagate
+        that — treat it as a successful no-op.
+        """
+
+        class _AlreadyClosedStream:
+            def close(self):
+                raise ValueError("I/O operation on closed file")
+
+        storage = self.storage_class(stream=_AlreadyClosedStream())
+        # Must not raise
+        storage.close()
+
+    def test_close_propagates_unexpected_exception(self):
+        """Narrow the except clause to (OSError, ValueError) so that a
+        genuinely unexpected error from a stream's close() (e.g. a buggy
+        custom stream that raises TypeError) still surfaces and can be
+        diagnosed — instead of being silently swallowed by a bare
+        ``except Exception``.
+        """
+
+        class _BuggyStream:
+            def close(self):
+                raise TypeError("close() called with wrong arg")
+
+        storage = self.storage_class(stream=_BuggyStream())
+        with pytest.raises(TypeError, match="close\\(\\) called with wrong arg"):
+            storage.close()
+
     def test_save_to_pathlib_dst(self, tmp_path):
         src = tmp_path / "src.txt"
         src.write_text("test")

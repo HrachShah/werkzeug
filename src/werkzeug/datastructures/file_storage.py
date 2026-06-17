@@ -125,7 +125,21 @@ class FileStorage:
         """Close the underlying file if possible."""
         try:
             self.stream.close()
-        except Exception:
+        except (OSError, ValueError):
+            # IOBase.close() is documented to swallow no errors itself. In
+            # practice the most common case is a low-level OSError (e.g.
+            # EBADF if the underlying fd was already closed at the OS level,
+            # which can happen when the request body was already consumed or
+            # when a SpooledTemporaryFile has rolled over to disk and the
+            # backing file was unlinked). ValueError is the historical
+            # result of calling close() on a BytesIO that was already
+            # closed in some older CPython versions and may still happen
+            # through custom IO subclasses. In both cases the stream is
+            # effectively closed from the caller's point of view, so
+            # treating them as a no-op is correct. Any other exception
+            # (AttributeError if self.stream was replaced with something
+            # that has no close, TypeError, or a bug inside close) should
+            # still propagate so it can be diagnosed.
             pass
 
     def __bool__(self) -> bool:
