@@ -136,7 +136,21 @@ class ETags(cabc.Collection[str]):
         return self.to_header()
 
     def __len__(self) -> int:
-        return len(self._strong)
+        # Count both strong and weak etags so the size reflects the total
+        # number of tags the container holds. The previous implementation
+        # only counted the strong set, which violated the Collection
+        # contract: len(ETags(weak_etags=["a", "b"])) was 0 even though
+        # the object was non-empty (bool(etags) was True, contains_weak
+        # returned True for the entries, etc). That asymmetry showed up
+        # in any caller that sized a buffer by len(etags), since the
+        # weak-only case would silently produce an undersized result.
+        if self.star_tag:
+            # RFC 7232 section 2.3: "*" matches any current etag for the
+            # resource, so a star_tag set has an unbounded count. 1 is
+            # the smallest length we can return that still satisfies
+            # "bool(len(etags)) == bool(etags)" for the star case.
+            return 1
+        return len(self._strong) + len(self._weak)
 
     def __iter__(self) -> cabc.Iterator[str]:
         return iter(self._strong)
