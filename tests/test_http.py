@@ -319,6 +319,33 @@ class TestHTTPUtility:
         assert bool(etags)
         assert etags.contains_raw('W/"foo"')
 
+    def test_etags_len(self):
+        # Empty container.
+        assert len(ETags()) == 0
+        assert len(ETags.from_header("")) == 0
+
+        # Strong-only etags: __len__ returns the number of strong tags.
+        assert len(ETags(strong_etags=["a", "b"])) == 2
+        assert len(ETags.from_header('"foo", "bar"')) == 2
+
+        # Weak-only etags: __len__ must include the weak tags. The
+        # previous implementation only counted strong tags, so a weak
+        # only set reported len == 0 even though bool(etags) was True
+        # and contains_weak returned True for the entries.
+        assert len(ETags(weak_etags=["a", "b"])) == 2
+        assert len(ETags.from_header('W/"foo"')) == 1
+        assert len(ETags.from_header('W/"foo", W/"bar"')) == 2
+
+        # Mixed: __len__ is the sum of both sets.
+        assert len(ETags(strong_etags=["a"], weak_etags=["b"])) == 2
+        assert len(ETags.from_header('"foo", W/"bar"')) == 2
+
+        # Star tag matches any current etag, so its length is 1 (the
+        # smallest nonzero value that keeps "bool(len(etags)) ==
+        # bool(etags)" consistent for the star case).
+        assert len(ETags(star_tag=True)) == 1
+        assert len(ETags.from_header("*")) == 1
+
     def test_remove_entity_headers(self):
         now = http.http_date()
         headers1 = [
