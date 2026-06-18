@@ -220,7 +220,7 @@ class GuardedIterator:
                     WSGIWarning,
                     stacklevel=2,
                 )
-            except Exception:
+            except (OSError, RuntimeError, ValueError, TypeError):
                 pass
 
 
