@@ -125,7 +125,7 @@ class FileStorage:
         """Close the underlying file if possible."""
         try:
             self.stream.close()
-        except Exception:
+        except (ValueError, OSError, AttributeError):
             pass
 
     def __bool__(self) -> bool:
