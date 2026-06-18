@@ -366,7 +366,7 @@ class DebuggedApplication:
 
             try:
                 yield from response(environ, start_response)
-            except Exception:
+            except (OSError, ConnectionError, ValueError, TypeError, KeyError):
                 # if we end up here there has been output but an error
                 # occurred.  in that situation we can do nothing fancy any
                 # more, better log something into the error log and fall
