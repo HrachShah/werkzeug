@@ -384,7 +384,15 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
                     headers_set = None
                 execute(InternalServerError())
             except Exception:
-                pass
+                # The fallback 500 page itself can fail (client already
+                # disconnected, app's error handler re-raises, logger
+                # write fails, etc.). Surface it in the server log so it
+                # isn't completely silent, but don't mask the original
+                # request exception that we already log below.
+                self.server.log(
+                    "error",
+                    "Error while writing fallback InternalServerError response.",
+                )
 
             from .debug.tbtools import DebugTraceback
 
