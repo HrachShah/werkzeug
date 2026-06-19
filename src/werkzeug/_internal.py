@@ -207,6 +207,6 @@ def _plain_int(value: str, base: int = 10) -> int:
     value = value.strip()
 
     if _plain_int_re.fullmatch(value) is None:
-        raise ValueError
+        raise ValueError(f"not a plain integer: {value!r}")
 
     return int(value, base)
