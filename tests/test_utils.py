@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import os
 from datetime import datetime
 
 import pytest
@@ -301,3 +302,14 @@ def test_secure_filename():
     )
     assert utils.secure_filename("__filename__") == "filename"
     assert utils.secure_filename("foo$&^*)bar") == "foobar"
+
+
+def test_secure_filename_leading_dot_device_file(monkeypatch):
+    monkeypatch.setattr(os, "name", "nt")
+    assert utils.secure_filename(".CON") == "_CON"
+    assert utils.secure_filename(".CON.txt") == "_CON.txt"
+    assert utils.secure_filename(".NUL") == "_NUL"
+    assert utils.secure_filename("CON") == "_CON"
+    # A device name that is just the extension part should not be
+    # confused with the prefix-of-name case.
+    assert utils.secure_filename("foo.CON.bar") == "foo.CON.bar"
