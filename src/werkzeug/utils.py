@@ -225,7 +225,7 @@ def secure_filename(filename: str) -> str:
     if (
         os.name == "nt"
         and filename
-        and filename.split(".")[0].upper() in _windows_device_files
+        and filename.partition(".")[0].upper() in _windows_device_files
     ):
         filename = f"_{filename}"
 
