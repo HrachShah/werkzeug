@@ -59,9 +59,26 @@ def test_safe_join_os_sep():
     import werkzeug.security as sec
 
     prev_value = sec._os_alt_seps
-    sec._os_alt_seps = "*"
-    assert safe_join("foo", "bar/baz*") is None
-    sec._os_alt_steps = prev_value
+    try:
+        sec._os_alt_seps = "*"
+        assert safe_join("foo", "bar/baz*") is None
+    finally:
+        sec._os_alt_seps = prev_value
+
+
+def test_safe_join_os_sep_restores_global() -> None:
+    """The os-sep test must restore the module-level _os_alt_seps so that
+    later tests (and production code that imports werkzeug.security after
+    running this test file) are not stuck treating '*' as an alt-sep that
+    blocks every path containing one.
+    """
+    import werkzeug.security as sec
+
+    assert sec._os_alt_seps == [], (
+        f"_os_alt_seps was leaked to {sec._os_alt_seps!r} by an earlier test"
+    )
+    # A path without '*' must not be rejected because of leaked state.
+    assert safe_join("a", "b/c") == "a/b/c"
 
 
 def test_safe_join_empty_trusted():
