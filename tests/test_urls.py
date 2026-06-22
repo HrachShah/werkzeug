@@ -104,3 +104,21 @@ def test_iri_to_uri_dont_quote_valid_code_points():
 def test_itms_services() -> None:
     url = "itms-services://?action=download-manifest&url=https://test.example/path"
     assert urls.iri_to_uri(url) == url
+
+
+def test_preserves_empty_userinfo_in_uri_to_iri_and_iri_to_uri() -> None:
+    # A present-but-empty username or password (urlsplit returns "",
+    # not None) used to be dropped by both functions because they
+    # tested `if parts.username:` / `if parts.password:`. urlsplit
+    # distinguishes "" from None, so the empty-but-present component
+    # should round-trip through uri_to_iri / iri_to_uri instead of
+    # being silently stripped. See pallets/werkzeug#3189.
+    assert urls.uri_to_iri("http://:pass@example.com/p") == "http://:pass@example.com/p"
+    assert urls.uri_to_iri("http://user:@example.com/p") == "http://user:@example.com/p"
+    assert urls.uri_to_iri("http://:@example.com/p") == "http://:@example.com/p"
+    assert urls.iri_to_uri("http://:pass@example.com/p") == "http://:pass@example.com/p"
+    assert urls.iri_to_uri("http://user:@example.com/p") == "http://user:@example.com/p"
+    assert urls.iri_to_uri("http://:@example.com/p") == "http://:@example.com/p"
+    # Still no auth when the component is genuinely missing.
+    assert urls.uri_to_iri("http://example.com/p") == "http://example.com/p"
+    assert urls.iri_to_uri("http://example.com/p") == "http://example.com/p"
