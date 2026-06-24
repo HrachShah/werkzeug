@@ -143,7 +143,22 @@ def iri_to_uri(iri: str) -> str:
     fragment = quote(parts.fragment, safe="%!#$&'()*+,/:;=?@")
 
     if parts.hostname:
-        netloc = parts.hostname.encode("idna").decode("ascii")
+        # IDNA encoding can fail with UnicodeError if any label is empty or
+        # longer than 63 octets, or if the overall name is longer than 253
+        # octets. A user-entered URL with a too-long label is still a real
+        # URL we want to round-trip; fall back to per-label IDNA so the
+        # over-long label is percent-quoted (RFC 3490 §3.1) and the rest
+        # is encoded normally.
+        try:
+            netloc = parts.hostname.encode("idna").decode("ascii")
+        except UnicodeError:
+            encoded_parts = []
+            for part in parts.hostname.split("."):
+                try:
+                    encoded_parts.append(part.encode("idna").decode("ascii"))
+                except UnicodeError:
+                    encoded_parts.append(quote(part, safe=""))
+            netloc = ".".join(encoded_parts)
     else:
         netloc = ""
 

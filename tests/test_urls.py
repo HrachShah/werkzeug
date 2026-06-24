@@ -104,3 +104,21 @@ def test_iri_to_uri_dont_quote_valid_code_points():
 def test_itms_services() -> None:
     url = "itms-services://?action=download-manifest&url=https://test.example/path"
     assert urls.iri_to_uri(url) == url
+
+
+def test_iri_to_uri_tolerates_over_long_idna_label() -> None:
+    # IDNA labels are limited to 63 octets per RFC 5891 §4.2.2 and the
+    # one-shot ``hostname.encode("idna")`` call used to raise UnicodeError
+    # when this was exceeded, which would surface as a 500 from any code
+    # path that converts user-supplied IRIs to URIs. Per-label encoding
+    # lets the over-long label percent-quote while still emitting a valid
+    # netloc for the rest of the URL.
+    long_label = "a" * 64
+    url = f"http://{long_label}.example.com/path"
+    result = urls.iri_to_uri(url)
+    # The short labels encode normally; the over-long label is percent-quoted.
+    assert result.startswith("http://")
+    assert "example.com" in result
+    assert "/path" in result
+    # Idempotent: re-encoding the result must produce the same URI.
+    assert urls.iri_to_uri(result) == result
