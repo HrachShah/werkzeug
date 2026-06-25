@@ -866,6 +866,48 @@ def test_default_converters():
     assert "foo" not in r.Map.default_converters
 
 
+def test_unicode_converter_rejects_minlength_zero():
+    """``minlength`` must be >= 1 per the converter's docstring. ``minlength=0``
+    silently built ``[^/]{0,}`` and matched the empty path segment, which the
+    default ``[^/]+`` converter explicitly rejects."""
+    with pytest.raises(ValueError, match="'minlength' must be >= 1"):
+        r.Map([r.Rule("/<string(minlength=0):x>", endpoint="x")])
+
+
+def test_unicode_converter_rejects_length_zero():
+    """``length`` is documented as the exact length and must be >= 1.
+    ``length=0`` silently built ``[^/]{0}``, which only matched the empty path."""
+    with pytest.raises(ValueError, match="'length' must be >= 1"):
+        r.Map([r.Rule("/<string(length=0):x>", endpoint="x")])
+
+
+def test_unicode_converter_rejects_min_greater_than_max():
+    """``minlength > maxlength`` previously produced ``[^/]{5,3}`` and crashed
+    at request time with ``re.error: min repeat greater than max repeat``."""
+    with pytest.raises(ValueError, match="'maxlength' must be >= 'minlength'"):
+        r.Map([r.Rule("/<string(minlength=5,maxlength=3):x>", endpoint="x")])
+
+
+def test_unicode_converter_rejects_maxlength_below_minlength_default():
+    """``maxlength=0`` with the default ``minlength=1`` produced ``[^/]{1,0}``
+    and crashed at request time with the same opaque regex error."""
+    with pytest.raises(ValueError, match="'maxlength' must be >= 'minlength'"):
+        r.Map([r.Rule("/<string(maxlength=0):x>", endpoint="x")])
+
+
+def test_unicode_converter_length_bounds_still_work():
+    """Sanity check that the validation does not break the documented happy
+    path: a 2..4 string converter accepts 'ab', 'abc', 'abcd' and rejects
+    'a' and 'abcde'."""
+    m = r.Map([r.Rule("/<string(minlength=2,maxlength=4):x>", endpoint="x")])
+    a = m.bind("example.org", "/")
+    assert a.match("/ab") == ("x", {"x": "ab"})
+    assert a.match("/abc") == ("x", {"x": "abc"})
+    assert a.match("/abcd") == ("x", {"x": "abcd"})
+    pytest.raises(NotFound, lambda: a.match("/a"))
+    pytest.raises(NotFound, lambda: a.match("/abcde"))
+
+
 def test_uuid_converter():
     m = r.Map([r.Rule("/a/<uuid:a_uuid>", endpoint="a")])
     a = m.bind("example.org", "/")
