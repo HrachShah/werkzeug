@@ -71,14 +71,40 @@ class UnicodeConverter(BaseConverter):
         length: int | None = None,
     ) -> None:
         super().__init__(map)
+        # The documented contract for ``minlength`` is that it must be
+        # greater than or equal to 1. ``length`` and ``maxlength`` must
+        # be non-negative. Validate them up front so that invalid
+        # combinations fail at rule construction time with a clear
+        # ValueError instead of producing a regex like ``[^/]{0,3}``
+        # (silently matches the empty path segment) or ``[^/]{1,0}``
+        # (raises an opaque ``re.error: min repeat greater than max
+        # repeat`` later, at request time).
+        minlength = int(minlength)
+        if minlength < 1:
+            raise ValueError(
+                "UnicodeConverter 'minlength' must be >= 1, got "
+                f"{minlength!r}"
+            )
         if length is not None:
-            length_regex = f"{{{int(length)}}}"
+            length = int(length)
+            if length < 1:
+                raise ValueError(
+                    "UnicodeConverter 'length' must be >= 1, got "
+                    f"{length!r}"
+                )
+            length_regex = f"{{{length}}}"
         else:
             if maxlength is None:
                 maxlength_value = ""
             else:
-                maxlength_value = str(int(maxlength))
-            length_regex = f"{{{int(minlength)},{maxlength_value}}}"
+                maxlength = int(maxlength)
+                if maxlength < minlength:
+                    raise ValueError(
+                        "UnicodeConverter 'maxlength' must be >= "
+                        f"'minlength' ({minlength}), got {maxlength!r}"
+                    )
+                maxlength_value = str(maxlength)
+            length_regex = f"{{{minlength},{maxlength_value}}}"
         self.regex = f"[^/]{length_regex}"
 
 
