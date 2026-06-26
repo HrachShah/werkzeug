@@ -811,3 +811,53 @@ def test_range_invalid_int(value):
 @pytest.mark.parametrize("value", ["*/🯱🯲🯳", "1-+2/3", "1_23-125/*"])
 def test_content_range_invalid_int(value):
     assert ContentRange.from_header(f"bytes {value}") is None
+
+
+class TestDumpHeaderEdgeCases:
+    """`dump_header` / `dump_options_header` take any iterable of keys, but the
+    implementation reads `key[-1]` to detect the RFC 5987 suffix `*`. An empty
+    string raises `IndexError: string index out of range`, and a non-string
+    key raises `TypeError`. The symmetric parsers `parse_dict_header` /
+    `parse_options_header` already drop empty keys, so the dumper should be
+    consistent and silently skip them instead of crashing.
+    """
+
+    def test_dump_header_skips_empty_string_key(self):
+        # Empty key matches the parse_dict_header behaviour of dropping
+        # "=value" items, so the round-trip is now consistent.
+        assert http.dump_header({"": "x"}) == ""
+        assert http.dump_header({"foo": "bar", "": "x"}) == "foo=bar"
+
+    def test_dump_header_skips_non_string_keys(self):
+        # Int, None, and tuple keys used to crash with TypeError. They are
+        # not valid token characters anyway, so dropping them is the safe
+        # behaviour and matches what `parse_dict_header` would do.
+        assert http.dump_header({1: "one"}) == ""
+        assert http.dump_header({None: "x"}) == ""
+        assert http.dump_header({("a", "b"): "x"}) == ""
+
+    def test_dump_header_still_quotes_values(self):
+        # Sanity check: the existing quoting behaviour is preserved.
+        assert http.dump_header({"foo": "bar baz"}) == 'foo="bar baz"'
+        assert http.dump_header({"foo": None}) == "foo"
+        assert http.dump_header({"foo*": "UTF-8''bar"}) == "foo*=UTF-8''bar"
+
+    def test_dump_options_header_skips_empty_string_key(self):
+        assert http.dump_options_header("text/html", {"": "x"}) == "text/html"
+        assert (
+            http.dump_options_header("text/html", {"charset": "UTF-8", "": "x"})
+            == "text/html; charset=UTF-8"
+        )
+
+    def test_dump_options_header_skips_non_string_keys(self):
+        assert http.dump_options_header("text/html", {1: "one"}) == "text/html"
+        assert http.dump_options_header("text/html", {None: "x"}) == "text/html"
+
+    def test_dump_options_header_still_skips_none_values(self):
+        # Pre-existing behaviour: None values are skipped, not emitted as a
+        # bare key. Pin it so the new empty-key check doesn't accidentally
+        # drop None-value entries.
+        assert (
+            http.dump_options_header("foo", {"bar": 42, "fizz": None})
+            == "foo; bar=42"
+        )

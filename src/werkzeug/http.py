@@ -316,6 +316,14 @@ def dump_options_header(header: str | None, options: t.Mapping[str, t.Any]) -> s
         if value is None:
             continue
 
+        # parse_options_header (via _unicodify_header_value, which
+        # ultimately splits on '=') drops keys that don't decode to
+        # a non-empty string, and the `key[-1]` below raises
+        # IndexError on an empty key. Skip non-string and empty keys
+        # so the round-trip is well-defined.
+        if not isinstance(key, str) or not key:
+            continue
+
         if key[-1] == "*":
             segments.append(f"{key}={value}")
         else:
@@ -360,6 +368,16 @@ def dump_header(iterable: dict[str, t.Any] | t.Iterable[t.Any]) -> str:
         items = []
 
         for key, value in iterable.items():
+            # parse_dict_header drops items with empty keys
+            # (see `if not key: continue` above), so dropping them
+            # here too preserves the round-trip: feeding the output
+            # of dump_header back into parse_dict_header is a no-op
+            # rather than an IndexError. A non-string key (e.g. an
+            # int that escaped from upstream parsing) is also skipped
+            # because key[-1] would raise TypeError and the
+            # function's documented contract is `dict[str, Any]`.
+            if not isinstance(key, str) or not key:
+                continue
             if value is None:
                 items.append(key)
             elif key[-1] == "*":
