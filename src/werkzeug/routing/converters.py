@@ -230,8 +230,22 @@ class FloatConverter(NumberConverter):
         super().__init__(map, min=min, max=max, signed=signed)  # type: ignore
 
     def to_url(self, value: t.Any) -> str:
-        # f format ensures no scientific notation, but forces trailing zeroes
-        return f"{self.num_convert(value):f}".rstrip("0")
+        # f format ensures no scientific notation, but forces trailing zeroes.
+        # We split on '.' so the integer half is never touched by the rstrip.
+        # For a whole-number float like 1.0 the f-string yields "1.000000"
+        # and stripping just the fractional trailing zeros gives "1.0", which
+        # is needed because the <float> regex (\\d+\\.\\d+) requires at least
+        # one digit after the decimal point; naively rstripping the whole
+        # string used to produce "1." which the matcher rejected with
+        # NotFound on the round-trip.
+        formatted = f"{self.num_convert(value):f}"
+        if "." in formatted:
+            int_part, frac_part = formatted.split(".")
+            frac_part = frac_part.rstrip("0")
+            if not frac_part:
+                frac_part = "0"
+            return f"{int_part}.{frac_part}"
+        return formatted
 
 
 class UUIDConverter(BaseConverter):

@@ -493,6 +493,25 @@ def test_float_no_scientific():
     assert "e" not in adapter.build("a", {"v": 0.00001})
 
 
+def test_float_whole_number_round_trips():
+    # The <float> regex is r"\d+\.\d+", so the URL segment must keep at least
+    # one digit after the decimal point. FloatConverter.to_url used to call
+    # rstrip("0") on the whole formatted string, which left "1." for 1.0
+    # and made adapter.build(...) return a URL the matcher could not find
+    # back. The fix keeps one trailing zero in the fractional part so the
+    # round-trip succeeds.
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example")
+
+    for value in (0.0, 1.0, 2.0, 100.0, 0.5, 0.1, 0.001, 1e-05):
+        url = adapter.build("a", {"v": value})
+        assert "." in url, f"build({value!r}) = {url!r} is missing a decimal point"
+        # The URL still needs to match the <float> regex and parse back.
+        endpoint, kwargs = adapter.match(url)
+        assert endpoint == "a"
+        assert kwargs == {"v": value}
+
+
 def test_greedy():
     map = r.Map(
         [
