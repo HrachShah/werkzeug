@@ -3,6 +3,11 @@
 Version 3.2.0
 -------------
 
+-   Preserve empty but present usernames and passwords through
+    ``uri_to_iri`` and ``iri_to_uri``. Previously an empty string was
+    treated as missing and silently dropped, so ``http://:pass@host/``
+    lost its userinfo even though ``urllib.parse.urlsplit`` still
+    distinguishes the empty string from ``None``.
 -   Drop support for Python 3.9. :pr:`3098`
 -   Remove previous deprecated code: :pr:`3099`
 

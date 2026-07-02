@@ -5,7 +5,7 @@ from werkzeug import urls
 
 def test_iri_support():
     assert urls.uri_to_iri("http://xn--n3h.net/") == "http://\u2603.net/"
-    assert urls.iri_to_uri("http://☃.net/") == "http://xn--n3h.net/"
+    assert urls.iri_to_uri("http://\u2603.net/") == "http://xn--n3h.net/"
     assert (
         urls.iri_to_uri("http://üser:pässword@☃.net/påth")
         == "http://%C3%BCser:p%C3%A4ssword@xn--n3h.net/p%C3%A5th"
@@ -104,3 +104,28 @@ def test_iri_to_uri_dont_quote_valid_code_points():
 def test_itms_services() -> None:
     url = "itms-services://?action=download-manifest&url=https://test.example/path"
     assert urls.iri_to_uri(url) == url
+
+
+def test_uri_to_iri_preserves_empty_userinfo() -> None:
+    # An empty-but-present username or password is distinct from a missing
+    # one (None) in urlsplit; both must be preserved verbatim through
+    # uri_to_iri/iri_to_uri rather than being dropped by truthiness checks.
+    assert (
+        urls.uri_to_iri("http://:pass@example.com/path")
+        == "http://:pass@example.com/path"
+    )
+    assert (
+        urls.uri_to_iri("http://user:@example.com/path")
+        == "http://user:@example.com/path"
+    )
+    assert (
+        urls.iri_to_uri("http://:pass@example.com/path")
+        == "http://:pass@example.com/path"
+    )
+    assert (
+        urls.iri_to_uri("http://user:@example.com/path")
+        == "http://user:@example.com/path"
+    )
+    # A truly missing userinfo must still be dropped (no trailing "@").
+    assert urls.uri_to_iri("http://example.com/path") == "http://example.com/path"
+    assert urls.iri_to_uri("http://example.com/path") == "http://example.com/path"
