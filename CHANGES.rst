@@ -9,6 +9,11 @@ Version 3.2.0
     still matches the converter's regex. Non-finite values (``nan``,
     ``inf``, ``-inf``) now raise ``ValueError`` rather than silently
     producing a URL that does not match. :issue:`3146`
+-   ``uri_to_iri`` and ``iri_to_uri`` preserve a present-but-empty
+    ``username`` or ``password`` (e.g. ``"http://:pass@example.com"``)
+    so the userinfo round-trips losslessly. Previously a truthiness
+    check on the parsed components silently dropped an empty user
+    or password. :issue:`3189`
 -   Drop support for Python 3.9. :pr:`3098`
 -   Remove previous deprecated code: :pr:`3099`
 

@@ -68,6 +68,12 @@ def uri_to_iri(uri: str) -> str:
 
     :param uri: The URI to convert.
 
+    .. versionchanged:: 3.2
+        Preserve a present-but-empty ``username`` or ``password``
+        (e.g. ``"http://:pass@example.com"``) so the userinfo part
+        round-trips. Previously a truthiness check silently dropped
+        an empty user or password.
+
     .. versionchanged:: 3.0
         Passing a tuple or bytes, and the ``charset`` and ``errors`` parameters,
         are removed.
@@ -98,10 +104,14 @@ def uri_to_iri(uri: str) -> str:
     if parts.port:
         netloc = f"{netloc}:{parts.port}"
 
-    if parts.username:
+    # Use `is not None` so a present-but-empty userinfo component (which
+    # urlsplit reports as "") is preserved. A truthiness check would
+    # silently drop an empty username or password, losing data on inputs
+    # like "http://:pass@host" or "http://user:@host" (issue #3189).
+    if parts.username is not None:
         auth = _unquote_user(parts.username)
 
-        if parts.password:
+        if parts.password is not None:
             password = _unquote_user(parts.password)
             auth = f"{auth}:{password}"
 
@@ -118,6 +128,12 @@ def iri_to_uri(iri: str) -> str:
     'http://xn--n3h.net/p%C3%A5th?q=%C3%A8ry%DF'
 
     :param iri: The IRI to convert.
+
+    .. versionchanged:: 3.2
+        Preserve a present-but-empty ``username`` or ``password``
+        (e.g. ``"http://:pass@example.com"``) so the userinfo part
+        round-trips. Previously a truthiness check silently dropped
+        an empty user or password.
 
     .. versionchanged:: 3.0
         Passing a tuple or bytes, the ``charset`` and ``errors`` parameters,
@@ -153,10 +169,14 @@ def iri_to_uri(iri: str) -> str:
     if parts.port:
         netloc = f"{netloc}:{parts.port}"
 
-    if parts.username:
+    # Use `is not None` so a present-but-empty userinfo component (which
+    # urlsplit reports as "") is preserved. A truthiness check would
+    # silently drop an empty username or password, losing data on inputs
+    # like "http://:pass@host" or "http://user:@host" (issue #3189).
+    if parts.username is not None:
         auth = quote(parts.username, safe="%!$&'()*+,;=")
 
-        if parts.password:
+        if parts.password is not None:
             password = quote(parts.password, safe="%!$&'()*+,;=")
             auth = f"{auth}:{password}"
 

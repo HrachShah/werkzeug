@@ -104,3 +104,52 @@ def test_iri_to_uri_dont_quote_valid_code_points():
 def test_itms_services() -> None:
     url = "itms-services://?action=download-manifest&url=https://test.example/path"
     assert urls.iri_to_uri(url) == url
+
+
+def test_uri_to_iri_keeps_empty_userinfo():
+    # Empty username with a password: previously dropped the :pass, now preserved.
+    assert (
+        urls.uri_to_iri("http://:pass@example.com/path")
+        == "http://:pass@example.com/path"
+    )
+    # Empty password with a username: previously dropped the trailing colon, now preserved.
+    assert (
+        urls.uri_to_iri("http://user:@example.com/path")
+        == "http://user:@example.com/path"
+    )
+    # Both empty: previously dropped both, now preserved as :@.
+    assert (
+        urls.uri_to_iri("http://:@example.com/path")
+        == "http://:@example.com/path"
+    )
+
+
+def test_iri_to_uri_keeps_empty_userinfo():
+    # Empty username with a password is preserved.
+    assert (
+        urls.iri_to_uri("http://:pass@example.com/path")
+        == "http://:pass@example.com/path"
+    )
+    # Empty password with a username is preserved.
+    assert (
+        urls.iri_to_uri("http://user:@example.com/path")
+        == "http://user:@example.com/path"
+    )
+    # Both empty is preserved.
+    assert (
+        urls.iri_to_uri("http://:@example.com/path")
+        == "http://:@example.com/path"
+    )
+
+
+def test_uri_to_iri_no_userinfo_unchanged():
+    # When the userinfo is missing, neither user nor password is added.
+    assert (
+        urls.uri_to_iri("http://example.com/path")
+        == "http://example.com/path"
+    )
+    # Non-empty userinfo is still preserved.
+    assert (
+        urls.uri_to_iri("http://user:pass@example.com/path")
+        == "http://user:pass@example.com/path"
+    )
