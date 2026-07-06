@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 import typing as t
 import uuid
@@ -211,7 +212,12 @@ class FloatConverter(NumberConverter):
     :param signed: Allow signed (negative) values.
 
     .. versionchanged:: 3.2
-        Does not produce scientific notation.
+        Does not produce scientific notation. Round-trips values whose
+        fixed-point representation requires more than 6 fractional digits
+        (e.g. ``1e-7``) and whole-number floats (e.g. ``1.0``) without
+        losing the ``.0`` suffix the regex requires. Raises ``ValueError``
+        for ``nan``, ``inf`` and ``-inf`` instead of silently producing a
+        URL that does not match.
 
     .. versionadded:: 0.15
         The ``signed`` parameter.
@@ -230,8 +236,28 @@ class FloatConverter(NumberConverter):
         super().__init__(map, min=min, max=max, signed=signed)  # type: ignore
 
     def to_url(self, value: t.Any) -> str:
-        # f format ensures no scientific notation, but forces trailing zeroes
-        return f"{self.num_convert(value):f}".rstrip("0")
+        value = self.num_convert(value)
+        if math.isnan(value) or math.isinf(value):
+            raise ValueError(
+                f"Cannot encode non-finite float {value!r} as a URL value."
+            )
+        # Use the shortest repr that round-trips, which is what repr() (and
+        # str() since Python 3.1) returns for a float. repr() picks
+        # scientific notation for very small / very large magnitudes; fall
+        # back to a high-precision fixed-point form in that case so the
+        # value stays in [0-9.] (matching the converter's regex) and
+        # round-trips through float().strip trailing zeros on the
+        # fractional side only -- never on the integer side -- and keep a
+        # single "0" if the fractional part was entirely zeros, so the
+        # output always carries the ".0" suffix the regex requires.
+        formatted = repr(value)
+        if "e" in formatted or "E" in formatted:
+            formatted = f"{value:.17f}"
+        if "." in formatted:
+            integer, _, fractional = formatted.partition(".")
+            fractional = fractional.rstrip("0") or "0"
+            return f"{integer}.{fractional}"
+        return f"{formatted}.0"
 
 
 class UUIDConverter(BaseConverter):

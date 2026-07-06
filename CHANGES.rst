@@ -3,6 +3,12 @@
 Version 3.2.0
 -------------
 
+-   ``FloatConverter.to_url`` round-trips values whose fixed-point
+    representation needs more than 6 fractional digits (e.g. ``1e-7``)
+    and keeps the ``.0`` suffix for whole-number floats so the URL
+    still matches the converter's regex. Non-finite values (``nan``,
+    ``inf``, ``-inf``) now raise ``ValueError`` rather than silently
+    producing a URL that does not match. :issue:`3146`
 -   Drop support for Python 3.9. :pr:`3098`
 -   Remove previous deprecated code: :pr:`3099`
 

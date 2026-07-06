@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections.abc as cabc
 import gc
+import re
 import typing as t
 import uuid
 
@@ -491,6 +492,46 @@ def test_float_no_scientific():
     map = r.Map([r.Rule("/<float:v>", endpoint="a")])
     adapter = map.bind("test.example")
     assert "e" not in adapter.build("a", {"v": 0.00001})
+
+
+def test_float_to_url_output_matches_regex():
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example")
+    for v in (0.0, 1.0, 1000.0, 1e-7, 1e-15, 1e+20, 0.5, 1.5, 0.0001, 1.1, 0.1, 0.815):
+        url = adapter.build("a", {"v": v})
+        assert url.startswith("/")
+        assert re.match(r"\d+\.\d+", url[1:])
+        assert "e" not in url and "E" not in url
+        assert not url.endswith(".")
+
+
+def test_float_to_url_signed_output_matches_regex():
+    map = r.Map([r.Rule("/<float(signed=True):v>", endpoint="a")])
+    adapter = map.bind("test.example")
+    for v in (-0.0, -1.0, -1.5, -100.5, -1e-7, -1e+20):
+        url = adapter.build("a", {"v": v})
+        assert url.startswith("/")
+        assert re.match(r"-?\d+\.\d+", url[1:])
+        assert not url.endswith(".")
+
+
+def test_float_to_url_rejects_non_finite():
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example")
+    with pytest.raises(ValueError):
+        adapter.build("a", {"v": float("inf")})
+    with pytest.raises(ValueError):
+        adapter.build("a", {"v": float("-inf")})
+    with pytest.raises(ValueError):
+        adapter.build("a", {"v": float("nan")})
+
+
+def test_float_build_then_match_roundtrip():
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example")
+    for v in (0.0, 1.0, 1.5, 1000.0, 0.0001, 1e-7, 1e-15, 1e+20, 0.5, 0.815, 0.1, 1.1, 1.12345678912345):
+        url = adapter.build("a", {"v": v})
+        assert adapter.match(url) == ("a", {"v": v})
 
 
 def test_greedy():
