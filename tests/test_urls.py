@@ -104,3 +104,42 @@ def test_iri_to_uri_dont_quote_valid_code_points():
 def test_itms_services() -> None:
     url = "itms-services://?action=download-manifest&url=https://test.example/path"
     assert urls.iri_to_uri(url) == url
+
+
+@pytest.mark.parametrize(
+    ("uri", "expected_uri"),
+    [
+        # Empty username, non-empty password: present-but-empty username must survive.
+        ("http://:pass@example.com/path", "http://:pass@example.com/path"),
+        # Non-empty username, empty password: present-but-empty password must survive.
+        ("http://user:@example.com/path", "http://user:@example.com/path"),
+        # Both empty.
+        ("http://:@example.com/path", "http://:@example.com/path"),
+        # Username only, no password at all (None, not empty): no separator.
+        ("http://user@example.com/path", "http://user@example.com/path"),
+        # No userinfo at all.
+        ("http://example.com/path", "http://example.com/path"),
+    ],
+)
+def test_uri_to_iri_preserves_empty_userinfo(uri, expected_uri):
+    """An empty-but-present username or password must round-trip, not be dropped.
+
+    ``urllib.parse.urlsplit`` distinguishes a present-but-empty component
+    (``""``) from a missing one (``None``); ``uri_to_iri`` / ``iri_to_uri``
+    should preserve that distinction instead of treating an empty string as
+    missing.
+    """
+    assert urls.uri_to_iri(uri) == expected_uri
+    assert urls.iri_to_uri(uri) == expected_uri
+
+
+def test_uri_to_iri_preserves_empty_userinfo_with_percent_encoded_password():
+    """Percent-encoded bytes in an empty-username userinfo must round-trip.
+
+    Pre-fix, the empty username is treated as missing, so the userinfo section
+    is dropped entirely from the output. Post-fix, the userinfo is preserved.
+    """
+    out = urls.uri_to_iri("http://:p%40ss@example.com/path")
+    assert out.startswith("http://:") and out.endswith("@example.com/path")
+    out2 = urls.iri_to_uri("http://:p%40ss@example.com/path")
+    assert out2.startswith("http://:") and out2.endswith("@example.com/path")
