@@ -229,6 +229,16 @@ class TestHTTPUtility:
     def test_authorization_basic_incorrect_padding(self):
         assert Authorization.from_header("Basic foo") is None
 
+    def test_authorization_basic_missing_token(self):
+        # The "Basic" scheme requires a base64-encoded token. A header with
+        # the scheme but no token (or only whitespace) used to silently
+        # decode as b'' and split on ':', returning an Authorization
+        # with empty username and password. Treat that as malformed and
+        # return None, matching the behavior for undecodable base64.
+        assert Authorization.from_header("Basic") is None
+        assert Authorization.from_header("Basic ") is None
+        assert Authorization.from_header("Basic  ") is None
+
     def test_bad_authorization_header_encoding(self):
         """If the base64 encoded bytes can't be decoded as UTF-8"""
         content = base64.b64encode(b"\xffser:pass").decode()
