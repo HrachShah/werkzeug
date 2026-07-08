@@ -1,6 +1,7 @@
 import linecache
 import re
 import sys
+from typing import IO
 from unittest import mock
 
 import pytest
@@ -16,6 +17,7 @@ from werkzeug.debug.repr import dump
 from werkzeug.debug.repr import helper
 from werkzeug.test import Client
 from werkzeug.wrappers import Request
+from werkzeug.wrappers import Response
 
 
 class TestDebugRepr:
@@ -316,3 +318,81 @@ def test_debugged_application_pin_security_false():
     # This should not raise AttributeError
     debugged = DebuggedApplication(app, evalex=True, pin_security=False)
     assert debugged.pin is None
+
+
+def test_debugged_application_lets_baseexception_propagate() -> None:
+    """A ``BaseException`` raised by the wrapped app must reach the WSGI
+    server's signal machinery, not be swallowed by the streamed-response
+    fallback in ``DebuggedApplication.debug_application``.
+    """
+
+    class _Boom(BaseException):
+        pass
+
+    def app(environ, start_response):  # type: ignore[no-untyped-def]
+        start_response("200 OK", [("Content-Type", "text/plain")])
+        yield b"prefix-"
+        raise _Boom("control flow")
+        yield b"suffix"  # pragma: no cover
+
+    debugged = DebuggedApplication(app, evalex=False)
+
+    def _start_response(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return None
+
+    with pytest.raises(_Boom):
+        for _ in debugged.debug_application(
+            {"REQUEST_METHOD": "GET", "wsgi.errors": mock.MagicMock()},
+            _start_response,
+        ):
+            pass
+
+
+def test_debugged_application_streamed_response_fallback_logs_narrow_exceptions() -> None:
+    """The inner ``yield from response(...)`` fallback around the
+    500-page rendering catches only the narrow set of failures a broken
+    response stream can raise, so the
+    ``environ['wsgi.errors'].write(...)`` log call runs in the normal
+    case instead of being interrupted by a non-I/O error.
+    """
+
+    class _NarrowError(ValueError):
+        pass
+
+    errors: list[str] = []
+
+    def app(environ, start_response):  # type: ignore[no-untyped-def]
+        start_response("200 OK", [("Content-Type", "text/plain")])
+        yield b"prefix-"
+        raise _NarrowError("real wsgi failure")
+        yield b"suffix"  # pragma: no cover
+
+    def _wsgi_errors() -> IO[str]:
+        class _Stream:
+            def write(self, data: str) -> int:
+                errors.append(data)
+                return len(data)
+
+        return _Stream()  # type: ignore[return-value]
+
+    debugged = DebuggedApplication(app, evalex=False)
+
+    def _broken_call(  # type: ignore[no-untyped-def]
+        self: Response, environ, start_response
+    ):
+        start_response("500 INTERNAL SERVER ERROR", [("Content-Type", "text/html")])
+        raise _NarrowError("response stream failure")
+        yield b""  # pragma: no cover
+
+    def _start_response(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return None
+
+    environ = {"REQUEST_METHOD": "GET", "wsgi.errors": _wsgi_errors()}
+
+    with mock.patch.object(Response, "__call__", _broken_call):
+        for _ in debugged.debug_application(environ, _start_response):
+            pass
+
+    # The narrow exception is in the except tuple, so the fallback log
+    # was emitted to ``wsgi.errors``.
+    assert any("Debugging middleware caught exception" in e for e in errors)
