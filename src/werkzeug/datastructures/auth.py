@@ -103,6 +103,18 @@ class Authorization:
         rest = rest.strip()
 
         if scheme == "basic":
+            # The Basic scheme requires a base64-encoded token after the
+            # scheme name. `Basic` and `Basic ` (with no token at all) must
+            # be rejected up front: the previous code fell through to
+            # `b64decode(b"")` and `.partition(":")` on the empty
+            # bytestring, which silently produced a Basic auth with an
+            # empty username and an empty password -- a credential
+            # object that round-trips through `to_header()` as `Basic Og==`,
+            # so the empty-token case was not just a parse miss but an
+            # active "authenticate as empty user" footgun.
+            if not rest:
+                return None
+
             try:
                 username, _, password = base64.b64decode(rest).decode().partition(":")
             except (binascii.Error, UnicodeError):
