@@ -150,7 +150,43 @@ class TestHTTPUtility:
         )
         assert csp.default_src == "'self'"
         assert csp.script_src == "'unsafe-inline' *"
-        assert csp.img_src is None
+        # Bare directives are preserved with an empty-string value so they can
+        # round-trip through to_header without being silently dropped.
+        assert csp.img_src == ""
+        assert csp["img-src"] == ""
+        assert csp.to_header() == (
+            "default-src 'self'; script-src 'unsafe-inline' *; img-src"
+        )
+
+    def test_csp_bare_directive_preserved(self):
+        # https://www.w3.org/TR/CSP3/#upgrade-insecure-requests
+        csp = ContentSecurityPolicy.from_header("upgrade-insecure-requests")
+        assert "upgrade-insecure-requests" in csp
+        assert csp["upgrade-insecure-requests"] == ""
+        assert csp.upgrade_insecure_requests == ""
+        assert csp.to_header() == "upgrade-insecure-requests"
+
+    def test_csp_block_all_mixed_content_preserved(self):
+        csp = ContentSecurityPolicy.from_header(
+            "block-all-mixed-content; default-src 'self'"
+        )
+        assert "block-all-mixed-content" in csp
+        assert csp["block-all-mixed-content"] == ""
+        assert csp.to_header() == (
+            "block-all-mixed-content; default-src 'self'"
+        )
+
+    def test_csp_round_trip_bare_directive(self):
+        original = "default-src 'self'; upgrade-insecure-requests; img-src"
+        csp = ContentSecurityPolicy.from_header(original)
+        # round-trip is exact (separator and ordering preserved)
+        assert csp.to_header() == original
+
+    def test_csp_to_header_empty_value_no_trailing_space(self):
+        csp = ContentSecurityPolicy()
+        csp["upgrade-insecure-requests"] = ""
+        # No trailing space after the directive name when the value is empty.
+        assert csp.to_header() == "upgrade-insecure-requests"
 
     def test_authorization_header(self):
         a = Authorization.from_header("Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")
