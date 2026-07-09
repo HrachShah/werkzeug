@@ -110,11 +110,26 @@ class Authorization:
 
             return cls(scheme, {"username": username, "password": password})
 
-        if "=" in rest.rstrip("="):
-            # = that is not trailing, this is parameters.
+        # Distinguish a token from a parameter list by the position of the
+        # first '=' sign. A leading '=' is not a valid key=value opener
+        # (parse_dict_header drops the leading-equals case), so treat the
+        # whole thing as a token. Trailing '=' characters (typically
+        # base64 padding on a token) are also a token marker: the first
+        # '=' is the start of the value, and the previous ones are just
+        # padding. Use find('=') and look at whether the first hit is at
+        # index 0 (= it's not a key=value opener) or whether what follows
+        # the first '=' is itself empty (trailing '=' is padding, not a
+        # key= opener).
+        first_eq = rest.find("=")
+        if first_eq > 0 and rest[first_eq + 1 :].rstrip("=").strip():
+            # '=' in a non-leading position: this is parameters.
             return cls(scheme, parse_dict_header(rest), None)
 
-        # No = or only trailing =, this is a token.
+        # Leading '=' or no '=', this is a token. The original value
+        # (including any leading '=' that would otherwise be lost) is
+        # preserved as the token so that round-tripping
+        # ``Authorization(type, token=...).to_header()`` through
+        # ``from_header`` yields an equivalent instance.
         return cls(scheme, None, rest)
 
     def to_header(self) -> str:
@@ -283,11 +298,14 @@ class WWWAuthenticate:
         scheme = scheme.lower()
         rest = rest.strip()
 
-        if "=" in rest.rstrip("="):
-            # = that is not trailing, this is parameters.
+        # Same heuristic as Authorization.from_header above: a leading
+        # '=' is not a key=value opener, and the only '=' is trailing
+        # padding on a token (e.g. base64 padding). A non-leading '='
+        # that has non-empty content on both sides is a parameter list.
+        first_eq = rest.find("=")
+        if first_eq > 0 and rest[first_eq + 1 :].rstrip("=").strip():
             return cls(scheme, parse_dict_header(rest), None)
 
-        # No = or only trailing =, this is a token.
         return cls(scheme, None, rest)
 
     def to_header(self) -> str:

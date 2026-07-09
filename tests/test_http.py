@@ -246,6 +246,33 @@ class TestHTTPUtility:
         assert basic1 != bearer1
         assert basic1 != object()
 
+    def test_authorization_token_with_leading_equals(self):
+        # `Bearer =abc` is an unusual but valid token whose first character
+        # is '='. The previous ``from_header`` logic stripped trailing '='
+        # before looking for the first non-trailing one; that put the
+        # leading '=' past the start of the string and routed the value
+        # into the parameter-list branch. The fix checks the position of
+        # the first '=' explicitly: a leading '=' is not a key=value
+        # opener, so the whole value is treated as a token (and
+        # round-trips through ``to_header``).
+        a = Authorization.from_header("Bearer =abc")
+        assert a.type == "bearer"
+        assert a.token == "=abc"
+        assert a.parameters == {}
+        # Round-trip: building the header from a token that starts with
+        # '=' and parsing it again must produce the same token. The
+        # previous code lost the leading '=' and produced a `token` of
+        # "abc" with a leading-equals dropped on the floor.
+        round_trip = Authorization("bearer", token="=abc")
+        assert Authorization.from_header(round_trip.to_header()) == round_trip
+
+        # An empty token (just a single '=' with no characters around
+        # it) is still a token, not an empty parameter list.
+        a = Authorization.from_header("Bearer =")
+        assert a.type == "bearer"
+        assert a.token == "="
+        assert a.parameters == {}
+
     def test_www_authenticate_header(self):
         wa = WWWAuthenticate.from_header('Basic realm="WallyWorld"')
         assert wa.type == "basic"
@@ -293,6 +320,20 @@ class TestHTTPUtility:
         assert token1 == token2
         assert basic1 != token1
         assert basic1 != object()
+
+    def test_www_authenticate_token_with_leading_equals(self):
+        # Mirror of test_authorization_token_with_leading_equals for
+        # the response-side ``WWWAuthenticate``. A `WWW-Authenticate:
+        # Bearer =abc` header used to be misparsed as a parameter list
+        # with the leading '=' dropped, instead of a token whose value
+        # starts with '='. The position-of-first-= check now keeps the
+        # whole value as the token.
+        a = WWWAuthenticate.from_header("Bearer =abc")
+        assert a.type == "bearer"
+        assert a.token == "=abc"
+        assert a.parameters == {}
+        round_trip = WWWAuthenticate("bearer", token="=abc")
+        assert WWWAuthenticate.from_header(round_trip.to_header()) == round_trip
 
     def test_etags(self):
         assert http.quote_etag("foo") == '"foo"'
