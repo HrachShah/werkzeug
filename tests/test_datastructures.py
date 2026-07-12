@@ -886,6 +886,32 @@ class TestContentSecurityPolicy:
         assert "default-src * 'self' quart.com" in policies
         assert "img-src 'none'" in policies
 
+    def test_del_removes_directive(self):
+        csp = ds.ContentSecurityPolicy(
+            [("font-src", "'self'"), ("media-src", "*"), ("prefetch-src", "https://example.com")]
+        )
+        assert "font-src" in csp
+        del csp.font_src
+        assert "font-src" not in csp
+        assert "media-src" in csp
+        del csp.media_src
+        assert "media-src" not in csp
+
+    def test_del_deprecated_directive_warns_and_removes(self):
+        csp = ds.ContentSecurityPolicy([("prefetch-src", "https://example.com")])
+        with pytest.warns(DeprecationWarning, match="prefetch-src"):
+            del csp.prefetch_src
+        assert "prefetch-src" not in csp
+
+    def test_del_missing_directive_is_noop(self):
+        csp = ds.ContentSecurityPolicy([("font-src", "'self'")])
+        # Deleting a directive that isn't set should be a silent no-op,
+        # matching the existing _del_value contract (uses `if key in self`
+        # before calling __delitem__).
+        del csp.media_src
+        assert "media-src" not in csp
+        assert csp.font_src == "'self'"
+
 
 class TestAccept:
     storage_class = ds.Accept
