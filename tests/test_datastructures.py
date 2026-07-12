@@ -230,6 +230,27 @@ class _MutableMultiDictTests:
         md.setlist("foo", [1, 2])
         assert md.getlist("foo") == [1, 2]
 
+    def test_setlist_empty_removes_key(self) -> None:
+        md = self.storage_class()
+        md.add("foo", 1)
+        md.add("foo", 2)
+        assert md.getlist("foo") == [1, 2]
+        md.setlist("foo", [])
+        assert md.getlist("foo") == []
+        assert "foo" not in md
+        # Repeatedly setting the same key to [] stays a no-op.
+        md.setlist("foo", [])
+        assert "foo" not in md
+        # And the iteration helpers all converge.
+        assert list(md.items()) == []
+        assert list(md.items(multi=True)) == []
+        assert list(md.lists()) == []
+        assert list(md.listvalues()) == []
+        # Setting a fresh key to [] never creates a stale entry either.
+        md.setlist("bar", [])
+        assert "bar" not in md
+        assert list(md.items()) == []
+
     def test_or(self) -> None:
         a = self.storage_class({"x": 1})
         b = a | {"y": 2}

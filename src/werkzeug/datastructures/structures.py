@@ -303,11 +303,21 @@ class MultiDict(TypeConversionDict[K, V]):
         >>> d.getlist('foo')
         ['1', '2']
 
+        Passing an empty iterable removes the key entirely so that a later
+        :meth:`items`, :meth:`get`, or :meth:`__contains__` call sees the key
+        as absent, instead of leaving behind an empty list that would later
+        raise ``IndexError: list index out of range`` from :meth:`items`.
+
         :param key: The key for which the values are set.
         :param new_list: An iterable with the new values for the key.  Old values
                          are removed first.
         """
-        super().__setitem__(key, list(new_list))  # type: ignore[assignment]
+        new_values = list(new_list)
+        if not new_values:
+            if key in self:
+                super().__delitem__(key)  # type: ignore[arg-type]
+        else:
+            super().__setitem__(key, new_values)  # type: ignore[assignment]
 
     @t.overload
     def setdefault(self, key: K) -> None: ...
