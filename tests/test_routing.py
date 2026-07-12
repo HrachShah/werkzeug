@@ -1196,6 +1196,23 @@ def test_converter_parser():
         r.parse_converter_args("min=0;max=500")
 
 
+@pytest.mark.parametrize(
+    "raw, expected",
+    (
+        ("", ""),
+        ('"', '"'),
+        ('""', ""),
+        ("42", 42),
+        ("3.14", 3.14),
+        ("True", True),
+        ("None", None),
+    ),
+)
+def test_pythonize_handles_empty_and_short_strings(raw, expected):
+    from werkzeug.routing.rules import _pythonize
+    assert _pythonize(raw) == expected
+
+
 def test_alias_redirects():
     m = r.Map(
         [

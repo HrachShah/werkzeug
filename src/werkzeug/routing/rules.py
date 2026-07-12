@@ -103,8 +103,9 @@ def _pythonize(value: str) -> None | bool | int | float | str:
             return convert(value)
         except ValueError:
             pass
-    if value[:1] == value[-1:] and value[0] in "\"'":
-        value = value[1:-1]
+    if value:
+        if len(value) >= 2 and value[:1] == value[-1:] and value[0] in "\"'":
+            value = value[1:-1]
     return str(value)
 
 
