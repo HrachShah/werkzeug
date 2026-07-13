@@ -1027,17 +1027,31 @@ def unquote_etag(
 
     :param etag: the etag identifier to unquote.
     :return: a ``(etag, weak)`` tuple.
+
+    :raises TypeError: if ``etag`` is not a ``str`` or ``None``.
+    :raises ValueError: if ``etag`` is not a valid entity-tag
+        (i.e. the value following an optional ``W/`` weak-indicator is
+        not surrounded by a balanced pair of double quotes).
     """
+    if etag is None:
+        return None, None
+    if not isinstance(etag, str):
+        raise TypeError(
+            f"etag must be str or None, got {type(etag).__name__}."
+        )
+    etag = etag.strip()
     if not etag:
         return None, None
-    etag = etag.strip()
     weak = False
     if etag.startswith(("W/", "w/")):
         weak = True
         etag = etag[2:]
-    if etag[:1] == etag[-1:] == '"':
-        etag = etag[1:-1]
-    return etag, weak
+    if len(etag) < 2 or etag[0] != '"' or etag[-1] != '"':
+        raise ValueError(
+            f"Invalid entity-tag {etag!r}; the tag value must be a double-quoted"
+            f" string per RFC 7232 (got {etag!r})."
+        )
+    return etag[1:-1], weak
 
 
 def _parse_etags(value: str | None) -> ds.ETags:

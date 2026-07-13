@@ -314,6 +314,36 @@ class TestHTTPUtility:
             'W/"baz"',
         ]
 
+    def test_unquote_etag_rejects_non_string(self):
+        import pytest
+
+        with pytest.raises(TypeError, match="etag must be str or None"):
+            http.unquote_etag(42)
+        with pytest.raises(TypeError, match="etag must be str or None"):
+            http.unquote_etag(b'"foo"')
+        with pytest.raises(TypeError, match="etag must be str or None"):
+            http.unquote_etag(['"foo"'])
+
+    def test_unquote_etag_rejects_malformed(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid entity-tag"):
+            http.unquote_etag("broken")
+        with pytest.raises(ValueError, match="Invalid entity-tag"):
+            http.unquote_etag("foo")
+        with pytest.raises(ValueError, match="Invalid entity-tag"):
+            http.unquote_etag('"foo')
+        with pytest.raises(ValueError, match="Invalid entity-tag"):
+            http.unquote_etag('foo"')
+        with pytest.raises(ValueError, match="Invalid entity-tag"):
+            http.unquote_etag("W/broken")
+        with pytest.raises(ValueError, match="Invalid entity-tag"):
+            http.unquote_etag('W/"unbalanced')
+
+    def test_unquote_etag_treats_blank_as_none(self):
+        assert http.unquote_etag("") == (None, None)
+        assert http.unquote_etag("   ") == (None, None)
+
     def test_etags_nonzero(self):
         etags = ETags.from_header('W/"foo"')
         assert bool(etags)
