@@ -118,6 +118,16 @@ class TestHTTPUtility:
     def test_dict_header(self, value, expect):
         assert http.parse_dict_header(value) == expect
 
+    @pytest.mark.parametrize("bad_value", [None, b"a=b", 42, ["a"], {"a": "b"}])
+    def test_list_header_rejects_non_string(self, bad_value):
+        with pytest.raises(TypeError, match="value must be a string"):
+            http.parse_list_header(bad_value)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("bad_value", [None, b"a=b", 42, ["a"], {"a": "b"}])
+    def test_dict_header_rejects_non_string(self, bad_value):
+        with pytest.raises(TypeError, match="value must be a string"):
+            http.parse_dict_header(bad_value)  # type: ignore[arg-type]
+
     def test_cache_control_header(self):
         cc = RequestCacheControl.from_header("max-age=0, no-cache")
         assert cc.max_age == 0

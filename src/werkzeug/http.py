@@ -413,11 +413,16 @@ def parse_list_header(value: str) -> list[str]:
 
     :param value: The header value to parse.
 
+    :raises TypeError: if *value* is not a string.
+
     .. versionchanged:: 3.2
         Quotes and escapes are kept if only part of an item is quoted. Empty
         values are omitted. An empty list is returned if the value contains an
         unclosed quoted string.
     """
+    if not isinstance(value, str):
+        raise TypeError(f"value must be a string, not {type(value).__name__}")
+
     items = []
     item = ""
     escape = False
@@ -477,6 +482,8 @@ def parse_dict_header(value: str) -> dict[str, str | None]:
 
     :param value: The header value to parse.
 
+    :raises TypeError: if *value* is not a string.
+
     .. versionchanged:: 3.2
         An empty dict is returned if the value contains an unclosed quoted
         string.
@@ -493,6 +500,9 @@ def parse_dict_header(value: str) -> dict[str, str | None]:
     .. versionchanged:: 0.9
        The ``cls`` argument was added.
     """
+    if not isinstance(value, str):
+        raise TypeError(f"value must be a string, not {type(value).__name__}")
+
     result: dict[str, str | None] = {}
 
     for item in parse_list_header(value):
