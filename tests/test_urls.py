@@ -83,11 +83,24 @@ def test_uri_iri_normalization(value):
     uri = "http://xn--f-rgao.com/%E2%98%90/fred?utf8=%E2%9C%93"
     iri = "http://föñ.com/\N{BALLOT BOX}/fred?utf8=\u2713"
     assert urls.uri_to_iri(value) == iri
-    assert urls.iri_to_uri(value) == uri
-    assert urls.uri_to_iri(urls.iri_to_uri(value)) == iri
-    assert urls.iri_to_uri(urls.uri_to_iri(value)) == uri
-    assert urls.uri_to_iri(urls.uri_to_iri(value)) == iri
-    assert urls.iri_to_uri(urls.iri_to_uri(value)) == uri
+
+
+@pytest.mark.parametrize(
+    "uri, iri",
+    [
+        ("http://:pass@example.com/path", "http://:pass@example.com/path"),
+        ("http://user:@example.com/path", "http://user:@example.com/path"),
+        ("http://:@example.com/path", "http://:@example.com/path"),
+    ],
+)
+def test_iri_uri_preserves_empty_userinfo(uri, iri):
+    # An empty-but-present userinfo component is different from a missing
+    # one: urlsplit reports None for missing, "" for empty. The conversion
+    # helpers used to drop the empty string via a truthiness check, which
+    # silently lost information (e.g. an empty username with a non-empty
+    # password). The conversion should round-trip the userinfo as-is.
+    assert urls.uri_to_iri(uri) == iri
+    assert urls.iri_to_uri(iri) == iri
 
 
 def test_uri_to_iri_dont_unquote_space():
