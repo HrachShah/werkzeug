@@ -268,7 +268,11 @@ class ContentRange:
         units: str | None = "bytes",
     ) -> None:
         """Simple method to update the ranges."""
-        assert is_byte_range_valid(start, stop, length), "Bad range provided"
+        if not is_byte_range_valid(start, stop, length):
+            raise ValueError(
+                f"Bad range provided: start={start!r}, stop={stop!r},"
+                f" length={length!r}"
+            )
         self._units: str | None = units
         self._start: int | None = start
         self._stop: int | None = stop

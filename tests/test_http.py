@@ -700,6 +700,37 @@ class TestRange:
         assert rv.length == 100
         assert rv.units == "bytes"
 
+    def test_content_range_set_rejects_invalid_byte_range(self) -> None:
+        """Invalid byte ranges must raise ``ValueError``, not ``AssertionError``.
+
+        Previously ``ContentRange.set`` used ``assert is_byte_range_valid(...)``,
+        which is stripped under ``python -O`` and so silently accepted any
+        combination of ``start``/``stop``/``length``. The contract here is
+        the same as the ``Range`` class, which has always raised ``ValueError``
+        for the same shape.
+        """
+        cr = ContentRange("bytes", 0, 99, 100)
+
+        with pytest.raises(ValueError, match="Bad range provided"):
+            cr.set(start=50, stop=10, length=100, units="bytes")
+
+        with pytest.raises(ValueError, match="Bad range provided"):
+            cr.set(start=200, stop=300, length=100, units="bytes")
+
+        with pytest.raises(ValueError, match="Bad range provided"):
+            cr.set(start=-1, stop=10, length=100, units="bytes")
+
+        cr.set(start=0, stop=99, length=100, units="bytes")
+        assert cr.start == 0
+        assert cr.stop == 99
+        assert cr.length == 100
+        assert cr.units == "bytes"
+
+        cr.unset()
+        assert cr.units is None
+        assert cr.start is None
+        assert cr.stop is None
+
 
 class TestRegression:
     def test_best_match_works(self):
