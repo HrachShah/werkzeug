@@ -230,8 +230,16 @@ class FloatConverter(NumberConverter):
         super().__init__(map, min=min, max=max, signed=signed)  # type: ignore
 
     def to_url(self, value: t.Any) -> str:
-        # f format ensures no scientific notation, but forces trailing zeroes
-        return f"{self.num_convert(value):f}".rstrip("0")
+        # f format ensures no scientific notation, but forces trailing zeroes.
+        # Strip them, but always keep at least one digit after the decimal
+        # point so whole-number floats round-trip through the converter's
+        # regex (e.g. 1.0 stays "1.0", not "1." which the parser rejects).
+        formatted = f"{self.num_convert(value):f}"
+        if "." in formatted:
+            formatted = formatted.rstrip("0")
+            if formatted.endswith("."):
+                formatted += "0"
+        return formatted
 
 
 class UUIDConverter(BaseConverter):

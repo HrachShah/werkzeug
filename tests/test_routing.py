@@ -493,6 +493,36 @@ def test_float_no_scientific():
     assert "e" not in adapter.build("a", {"v": 0.00001})
 
 
+def test_float_to_url_keeps_decimal_for_whole_numbers():
+    """FloatConverter.to_url must keep at least one digit after the decimal
+    point so whole-number floats (1.0, 0.0, 100.0) round-trip through the
+    converter's regex instead of building URLs like "/1." that the matcher
+    rejects as 404.
+    """
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example", "/")
+
+    for v in (0.0, 1.0, 2.0, 100.0):
+        url = adapter.build("a", {"v": v})
+        # No bare trailing dot, and the URL still matches back to the value.
+        assert not url.endswith("/."), url
+        matched = adapter.match(url)
+        assert matched[1]["v"] == v, (v, url, matched)
+
+
+def test_float_to_url_strips_redundant_trailing_zeros():
+    """FloatConverter.to_url still strips trailing zeros that are not
+    significant (e.g. 1.50 -> "1.5"), preserving the no-scientific-notation
+    behaviour of the f format.
+    """
+    map = r.Map([r.Rule("/<float:v>", endpoint="a")])
+    adapter = map.bind("test.example")
+
+    assert adapter.build("a", {"v": 1.5}) == "/1.5"
+    assert adapter.build("a", {"v": 0.5}) == "/0.5"
+    assert adapter.build("a", {"v": 99.999}) == "/99.999"
+
+
 def test_greedy():
     map = r.Map(
         [

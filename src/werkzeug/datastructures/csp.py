@@ -14,7 +14,7 @@ def csp_property(key: str, deprecated: str | None = None) -> t.Any:
     return property(
         lambda x: x._get_value(key, deprecated=deprecated),
         lambda x, v: x._set_value(key, v, deprecated=deprecated),
-        lambda x: x._del_value(key, deprecated, deprecated=deprecated),
+        lambda x: x._del_value(key, deprecated=deprecated),
         f"The ``{key}`` directive.",
     )
 
