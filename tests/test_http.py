@@ -400,10 +400,19 @@ class TestHTTPUtility:
         # Issue #995
         assert http.parse_options_header(" ") == ("", {})
         assert http.parse_options_header(" , ") == (",", {})
+
         assert http.parse_options_header(" ; ") == ("", {})
         assert http.parse_options_header(" ,; ") == (",", {})
         assert http.parse_options_header(" , a ") == (", a", {})
         assert http.parse_options_header(" ; a ") == ("", {})
+
+    def test_parse_options_header_rejects_non_string(self) -> None:
+        with pytest.raises(TypeError, match="value must be a str"):
+            http.parse_options_header(b"plain")
+        with pytest.raises(TypeError, match="int"):
+            http.parse_options_header(123)
+        assert http.parse_options_header(None) == ("", {})
+        assert http.parse_options_header("plain") == ("plain", {})
 
     def test_parse_options_header_case_insensitive(self):
         _, options = http.parse_options_header(r'something; fileName="File.ext"')
