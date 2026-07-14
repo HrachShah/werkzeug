@@ -608,6 +608,8 @@ def parse_options_header(value: str | None) -> tuple[str, dict[str, str]]:
     """
     if value is None:
         return "", {}
+    if not isinstance(value, str):
+        raise TypeError(f"value must be a str, not {type(value).__name__}.")
 
     value, _, rest = value.partition(";")
     value = value.strip()
