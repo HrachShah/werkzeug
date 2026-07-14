@@ -104,7 +104,9 @@ class Authorization:
 
         if scheme == "basic":
             try:
-                username, _, password = base64.b64decode(rest).decode().partition(":")
+                username, _, password = (
+                    base64.b64decode(rest, validate=True).decode().partition(":")
+                )
             except (binascii.Error, UnicodeError):
                 return None
 

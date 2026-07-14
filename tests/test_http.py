@@ -237,6 +237,10 @@ class TestHTTPUtility:
     def test_authorization_basic_incorrect_padding(self):
         assert Authorization.from_header("Basic foo") is None
 
+    def test_authorization_basic_rejects_ignored_characters(self):
+        valid = "QWxhZGRpbjpvcGVuIHNlc2FtZQ=="
+        assert Authorization.from_header(f"Basic {valid}!") is None
+
     def test_bad_authorization_header_encoding(self):
         """If the base64 encoded bytes can't be decoded as UTF-8"""
         content = base64.b64encode(b"\xffser:pass").decode()
