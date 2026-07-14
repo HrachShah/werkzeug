@@ -418,6 +418,11 @@ def parse_list_header(value: str) -> list[str]:
         values are omitted. An empty list is returned if the value contains an
         unclosed quoted string.
     """
+    if not isinstance(value, str):
+        raise TypeError(
+            f"value must be a str, not {type(value).__name__}."
+        )
+
     items = []
     item = ""
     escape = False
