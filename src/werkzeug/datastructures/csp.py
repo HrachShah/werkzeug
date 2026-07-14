@@ -138,6 +138,12 @@ class ContentSecurityPolicy(CallbackDict[str, str]):
         """Parse a ``Content-Security-Policy`` header value and create an
         instance of this class.
 
+        Bare directives (no value, e.g. ``upgrade-insecure-requests`` or
+        ``block-all-mixed-content`` from
+        https://www.w3.org/TR/CSP3/#upgrade-insecure-requests) are
+        preserved as an empty-string value, so ``to_header`` can round
+        trip them.
+
         .. versionadded:: 3.2
         """
         if not value:
@@ -148,16 +154,26 @@ class ContentSecurityPolicy(CallbackDict[str, str]):
         for policy in value.split(";"):
             policy = policy.strip()
 
-            # Ignore badly formatted policies (no space)
+            if not policy:
+                continue
+
             if " " in policy:
-                directive, value = policy.strip().split(" ", 1)
+                directive, value = policy.split(" ", 1)
                 items.append((directive.strip(), value.strip()))
+            else:
+                # Bare directive: no value, just the directive name.
+                # Per CSP3, some directives (upgrade-insecure-requests,
+                # block-all-mixed-content) are valueless. Preserve the
+                # name with an empty value so to_header can re-emit it.
+                items.append((policy, ""))
 
         return cls(items)
 
     def to_header(self) -> str:
         """Convert to a ``Content-Security-Policy`` header value."""
-        return "; ".join(f"{key} {value}" for key, value in self.items())
+        return "; ".join(
+            key if not value else f"{key} {value}" for key, value in self.items()
+        )
 
     def __str__(self) -> str:
         return self.to_header()

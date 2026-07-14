@@ -150,7 +150,43 @@ class TestHTTPUtility:
         )
         assert csp.default_src == "'self'"
         assert csp.script_src == "'unsafe-inline' *"
-        assert csp.img_src is None
+        # Bare directives are preserved with an empty-string value so they can
+        # round-trip through to_header without being silently dropped.
+        assert csp.img_src == ""
+        assert csp["img-src"] == ""
+        assert csp.to_header() == (
+            "default-src 'self'; script-src 'unsafe-inline' *; img-src"
+        )
+
+    def test_csp_bare_directive_preserved(self):
+        # https://www.w3.org/TR/CSP3/#upgrade-insecure-requests
+        csp = ContentSecurityPolicy.from_header("upgrade-insecure-requests")
+        assert "upgrade-insecure-requests" in csp
+        assert csp["upgrade-insecure-requests"] == ""
+        assert csp.upgrade_insecure_requests == ""
+        assert csp.to_header() == "upgrade-insecure-requests"
+
+    def test_csp_block_all_mixed_content_preserved(self):
+        csp = ContentSecurityPolicy.from_header(
+            "block-all-mixed-content; default-src 'self'"
+        )
+        assert "block-all-mixed-content" in csp
+        assert csp["block-all-mixed-content"] == ""
+        assert csp.to_header() == (
+            "block-all-mixed-content; default-src 'self'"
+        )
+
+    def test_csp_round_trip_bare_directive(self):
+        original = "default-src 'self'; upgrade-insecure-requests; img-src"
+        csp = ContentSecurityPolicy.from_header(original)
+        # round-trip is exact (separator and ordering preserved)
+        assert csp.to_header() == original
+
+    def test_csp_to_header_empty_value_no_trailing_space(self):
+        csp = ContentSecurityPolicy()
+        csp["upgrade-insecure-requests"] = ""
+        # No trailing space after the directive name when the value is empty.
+        assert csp.to_header() == "upgrade-insecure-requests"
 
     def test_authorization_header(self):
         a = Authorization.from_header("Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")
@@ -246,6 +282,33 @@ class TestHTTPUtility:
         assert basic1 != bearer1
         assert basic1 != object()
 
+    def test_authorization_token_with_leading_equals(self):
+        # `Bearer =abc` is an unusual but valid token whose first character
+        # is '='. The previous ``from_header`` logic stripped trailing '='
+        # before looking for the first non-trailing one; that put the
+        # leading '=' past the start of the string and routed the value
+        # into the parameter-list branch. The fix checks the position of
+        # the first '=' explicitly: a leading '=' is not a key=value
+        # opener, so the whole value is treated as a token (and
+        # round-trips through ``to_header``).
+        a = Authorization.from_header("Bearer =abc")
+        assert a.type == "bearer"
+        assert a.token == "=abc"
+        assert a.parameters == {}
+        # Round-trip: building the header from a token that starts with
+        # '=' and parsing it again must produce the same token. The
+        # previous code lost the leading '=' and produced a `token` of
+        # "abc" with a leading-equals dropped on the floor.
+        round_trip = Authorization("bearer", token="=abc")
+        assert Authorization.from_header(round_trip.to_header()) == round_trip
+
+        # An empty token (just a single '=' with no characters around
+        # it) is still a token, not an empty parameter list.
+        a = Authorization.from_header("Bearer =")
+        assert a.type == "bearer"
+        assert a.token == "="
+        assert a.parameters == {}
+
     def test_www_authenticate_header(self):
         wa = WWWAuthenticate.from_header('Basic realm="WallyWorld"')
         assert wa.type == "basic"
@@ -293,6 +356,20 @@ class TestHTTPUtility:
         assert token1 == token2
         assert basic1 != token1
         assert basic1 != object()
+
+    def test_www_authenticate_token_with_leading_equals(self):
+        # Mirror of test_authorization_token_with_leading_equals for
+        # the response-side ``WWWAuthenticate``. A `WWW-Authenticate:
+        # Bearer =abc` header used to be misparsed as a parameter list
+        # with the leading '=' dropped, instead of a token whose value
+        # starts with '='. The position-of-first-= check now keeps the
+        # whole value as the token.
+        a = WWWAuthenticate.from_header("Bearer =abc")
+        assert a.type == "bearer"
+        assert a.token == "=abc"
+        assert a.parameters == {}
+        round_trip = WWWAuthenticate("bearer", token="=abc")
+        assert WWWAuthenticate.from_header(round_trip.to_header()) == round_trip
 
     def test_etags(self):
         assert http.quote_etag("foo") == '"foo"'
