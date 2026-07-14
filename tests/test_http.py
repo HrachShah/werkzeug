@@ -107,6 +107,14 @@ class TestHTTPUtility:
         assert http.parse_list_header(value) == expect
 
     @pytest.mark.parametrize(
+        "value",
+        [b"a, b", 123, ["a", "b"], {"a": 1}, None],
+    )
+    def test_list_header_rejects_non_string(self, value):
+        with pytest.raises(TypeError, match="value must be a str, not "):
+            http.parse_list_header(value)
+
+    @pytest.mark.parametrize(
         ("value", "expect"),
         [
             ('foo="bar baz", blah=42', {"foo": "bar baz", "blah": "42"}),
