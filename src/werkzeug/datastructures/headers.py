@@ -325,6 +325,9 @@ class Headers:
 
     def __contains__(self, key: str) -> bool:
         """Check if a key is present."""
+        if not isinstance(key, str):
+            return False
+
         try:
             self._get_key(key)
         except KeyError:

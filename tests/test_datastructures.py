@@ -482,6 +482,7 @@ class TestHeaders:
         headers.add("X-Foo", "bar")
         assert "x-Foo" in headers
         assert "Content-type" in headers
+        assert 42 not in headers
 
         with pytest.raises(ValueError):
             headers.add("X-Example", "foo\r\n bar")
