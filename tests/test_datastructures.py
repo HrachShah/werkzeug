@@ -728,6 +728,7 @@ class TestHeaderSet:
         hs.add("foo")
         hs.add("bar")
         assert "Bar" in hs
+        assert 42 not in hs
         assert hs.find("foo") == 0
         assert hs.find("BAR") == 1
         assert hs.find("baz") < 0

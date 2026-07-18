@@ -898,6 +898,9 @@ class HeaderSet(cabc.MutableSet[str]):
             self._on_update(self)
 
     def __contains__(self, header: str) -> bool:  # type: ignore[override]
+        if not isinstance(header, str):
+            return False
+
         return header.lower() in self._set
 
     def __len__(self) -> int:
