@@ -733,8 +733,9 @@ class TestHeaderSet:
         assert hs.find("BAR") == 1
         assert hs.find("baz") < 0
         hs.discard("missing")
-        hs.discard("foo")
+        hs.remove("FOO")
         assert hs.find("foo") < 0
+        hs.discard("foo")
         assert hs.find("bar") == 0
 
         with pytest.raises(IndexError):
