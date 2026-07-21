@@ -829,6 +829,8 @@ class HeaderSet(cabc.MutableSet[str]):
 
         :param header: the header to be looked up.
         """
+        if not isinstance(header, str):
+            return -1
         header = header.lower()
         for idx, item in enumerate(self._headers):
             if item.lower() == header:
@@ -900,7 +902,7 @@ class HeaderSet(cabc.MutableSet[str]):
             self._on_update(self)
 
     def __contains__(self, header: str) -> bool:  # type: ignore[override]
-        return header.lower() in self._set
+        return isinstance(header, str) and header.lower() in self._set
 
     def __len__(self) -> int:
         return len(self._set)
