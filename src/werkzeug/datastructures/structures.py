@@ -786,6 +786,8 @@ class HeaderSet(cabc.MutableSet[str]):
 
         :param header: the header to be removed.
         """
+        if not isinstance(header, str):
+            raise KeyError(header)
         key = header.lower()
         if key not in self._set:
             raise KeyError(header)

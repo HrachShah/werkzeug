@@ -732,6 +732,9 @@ class TestHeaderSet:
         assert hs.find("BAR") == 1
         assert hs.find("baz") < 0
         hs.discard("missing")
+        hs.discard(42)
+        with pytest.raises(KeyError):
+            hs.remove(42)
         hs.discard("foo")
         assert hs.find("foo") < 0
         assert hs.find("bar") == 0
