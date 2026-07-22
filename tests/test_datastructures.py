@@ -739,8 +739,10 @@ class TestHeaderSet:
             hs.remove(42)
         hs.discard("foo")
         assert hs.find("foo") < 0
-        assert hs.find("bar") == 0
+        hs.remove("BAR")
+        assert not hs
 
+        hs.add("bar")
         with pytest.raises(IndexError):
             hs.index("missing")
 
