@@ -806,6 +806,8 @@ class HeaderSet(cabc.MutableSet[str]):
         """
         inserted_any = False
         for header in iterable:
+            if not isinstance(header, str):
+                raise TypeError("HeaderSet values must be strings")
             key = header.lower()
             if key not in self._set:
                 self._headers.append(header)

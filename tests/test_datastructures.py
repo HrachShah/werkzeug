@@ -737,6 +737,8 @@ class TestHeaderSet:
         assert hs.find(42) == -1
         with pytest.raises(KeyError):
             hs.remove(42)
+        with pytest.raises(TypeError, match="values must be strings"):
+            hs.update([42])
         hs.discard("foo")
         assert hs.find("foo") < 0
         hs.remove("BAR")
