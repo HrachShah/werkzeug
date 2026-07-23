@@ -421,14 +421,16 @@ class Headers:
 
         .. versionadded:: 1.0
         """
-        if values:
-            values_iter = iter(values)
-            self.set(key, next(values_iter))
-
-            for value in values_iter:
-                self.add(key, value)
-        else:
+        values_iter = iter(values)
+        try:
+            first = next(values_iter)
+        except StopIteration:
             self.remove(key)
+            return
+
+        self.set(key, first)
+        for value in values_iter:
+            self.add(key, value)
 
     def setdefault(self, key: str, default: t.Any) -> str:
         """Return the first value for the key if it is in the headers,
