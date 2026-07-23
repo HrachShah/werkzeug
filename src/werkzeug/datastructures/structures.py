@@ -896,6 +896,8 @@ class HeaderSet(cabc.MutableSet[str]):
             self._on_update(self)
 
     def __setitem__(self: te.Self, idx: t.SupportsIndex, value: str) -> None:
+        if not isinstance(value, str):
+            raise TypeError("HeaderSet values must be strings")
         old = self._headers[idx]
         self._set.remove(old.lower())
         self._headers[idx] = value
