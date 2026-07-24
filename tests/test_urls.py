@@ -6,6 +6,10 @@ from werkzeug import urls
 def test_iri_support():
     assert urls.uri_to_iri("http://xn--n3h.net/") == "http://\u2603.net/"
     assert urls.iri_to_uri("http://☃.net/") == "http://xn--n3h.net/"
+    assert urls.uri_to_iri("http://:pass@example.com/") == "http://:pass@example.com/"
+    assert urls.uri_to_iri("http://user:@example.com/") == "http://user:@example.com/"
+    assert urls.iri_to_uri("http://:pässword@example.com/") == "http://:p%C3%A4ssword@example.com/"
+    assert urls.iri_to_uri("http://user:@example.com/") == "http://user:@example.com/"
     assert (
         urls.iri_to_uri("http://üser:pässword@☃.net/påth")
         == "http://%C3%BCser:p%C3%A4ssword@xn--n3h.net/p%C3%A5th"
