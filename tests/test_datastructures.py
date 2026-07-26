@@ -741,6 +741,8 @@ class TestHeaderSet:
             hs.update([42])
         with pytest.raises(TypeError, match="values must be strings"):
             hs[0] = 42
+        with pytest.raises(TypeError, match="values must be strings"):
+            self.storage_class(["valid", 42])
         hs.discard("foo")
         assert hs.find("foo") < 0
         hs.remove("BAR")

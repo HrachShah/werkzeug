@@ -768,9 +768,11 @@ class HeaderSet(cabc.MutableSet[str]):
     """
 
     def __init__(self, headers: cabc.Iterable[str] | None = None) -> None:
-        self._headers = list(headers or ())
-        self._set = {x.lower() for x in self._headers}
+        self._headers: list[str] = []
+        self._set: set[str] = set()
         self._on_update: cabc.Callable[[HeaderSet], None] | None = None
+        if headers is not None:
+            self.update(headers)
 
     def add(self, header: str) -> None:
         """Add a new header to the set."""
