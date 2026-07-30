@@ -108,3 +108,9 @@ def test_iri_to_uri_dont_quote_valid_code_points():
 def test_itms_services() -> None:
     url = "itms-services://?action=download-manifest&url=https://test.example/path"
     assert urls.iri_to_uri(url) == url
+
+
+def test_iri_conversion_preserves_explicit_zero_port():
+    value = "http://example.com:0/path"
+    assert urls.iri_to_uri(value) == value
+    assert urls.uri_to_iri(value) == value

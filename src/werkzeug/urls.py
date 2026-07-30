@@ -95,7 +95,7 @@ def uri_to_iri(uri: str) -> str:
     if ":" in netloc:
         netloc = f"[{netloc}]"
 
-    if parts.port:
+    if parts.port is not None:
         netloc = f"{netloc}:{parts.port}"
 
     if parts.username is not None:
@@ -150,7 +150,7 @@ def iri_to_uri(iri: str) -> str:
     if ":" in netloc:
         netloc = f"[{netloc}]"
 
-    if parts.port:
+    if parts.port is not None:
         netloc = f"{netloc}:{parts.port}"
 
     if parts.username is not None:
