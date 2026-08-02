@@ -765,6 +765,14 @@ class TestHeaderSet:
         hs.clear()
         assert not hs
 
+    def test_slice_deletion(self):
+        hs = self.storage_class(["Foo", "bar", "BAZ"])
+        del hs[0:2]
+        assert list(hs) == ["BAZ"]
+        assert "foo" not in hs
+        assert "BAR" not in hs
+        assert "baz" in hs
+
 
 class TestImmutableList:
     storage_class = ds.ImmutableList
