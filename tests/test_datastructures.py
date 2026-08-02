@@ -762,6 +762,8 @@ class TestHeaderSet:
         assert hs
         hs.clear()
         assert not hs
+        hs.clear()
+        assert not hs
 
 
 class TestImmutableList:

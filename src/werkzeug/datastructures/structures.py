@@ -854,6 +854,8 @@ class HeaderSet(cabc.MutableSet[str]):
 
     def clear(self: te.Self) -> None:
         """Clear the set."""
+        if not self._set:
+            return
         self._set.clear()
         self._headers.clear()
 
