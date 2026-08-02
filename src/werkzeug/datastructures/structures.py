@@ -905,9 +905,10 @@ class HeaderSet(cabc.MutableSet[str]):
         new_key = value.lower()
         if new_key != old_key and new_key in self._set:
             raise ValueError("HeaderSet cannot contain duplicate values")
-        self._set.remove(old_key)
         self._headers[idx] = value
-        self._set.add(new_key)
+        if new_key != old_key:
+            self._set.remove(old_key)
+            self._set.add(new_key)
         if self._on_update is not None:
             self._on_update(self)
 

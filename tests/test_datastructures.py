@@ -743,7 +743,10 @@ class TestHeaderSet:
             hs[0] = 42
         with pytest.raises(ValueError, match="duplicate values"):
             hs[0] = "BAR"
-        assert list(hs) == ["foo", "bar"]
+        hs[0] = "FOO"
+        assert list(hs) == ["FOO", "bar"]
+        assert "foo" in hs
+        assert hs.as_set(preserve_casing=True) == {"FOO", "bar"}
         with pytest.raises(TypeError, match="values must be strings"):
             self.storage_class(["valid", 42])
         hs.discard("foo")
