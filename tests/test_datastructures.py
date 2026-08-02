@@ -741,6 +741,9 @@ class TestHeaderSet:
 
         assert hs.index("bar") == 0
         assert hs
+        del hs[:]
+        assert not hs
+        assert hs.as_set() == set()
         hs.clear()
         assert not hs
 
