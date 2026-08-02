@@ -50,6 +50,14 @@ class _MutableMultiDictTests:
         assert dict(md)["a"] == 1
         assert dict(md) == {**md} == {"a": 1}
 
+    def test_slice_deletion(self):
+        hs = self.storage_class(["Foo", "bar", "BAZ"])
+        del hs[0:2]
+        assert list(hs) == ["BAZ"]
+        assert "foo" not in hs
+        assert "BAR" not in hs
+        assert "baz" in hs
+
     def test_basic_interface(self):
         md = self.storage_class()
         assert isinstance(md, dict)
@@ -421,6 +429,14 @@ class TestTypeConversionDict:
 class TestCombinedMultiDict:
     storage_class = ds.CombinedMultiDict
 
+    def test_slice_deletion(self):
+        hs = self.storage_class(["Foo", "bar", "BAZ"])
+        del hs[0:2]
+        assert list(hs) == ["BAZ"]
+        assert "foo" not in hs
+        assert "BAR" not in hs
+        assert "baz" in hs
+
     def test_basic_interface(self):
         d1 = ds.MultiDict([("foo", "1")])
         d2 = ds.MultiDict([("bar", "2"), ("bar", "3")])
@@ -475,6 +491,14 @@ class TestCombinedMultiDict:
 
 class TestHeaders:
     storage_class = ds.Headers
+
+    def test_slice_deletion(self):
+        hs = self.storage_class(["Foo", "bar", "BAZ"])
+        del hs[0:2]
+        assert list(hs) == ["BAZ"]
+        assert "foo" not in hs
+        assert "BAR" not in hs
+        assert "baz" in hs
 
     def test_basic_interface(self):
         headers = self.storage_class()
@@ -666,6 +690,14 @@ class TestHeaders:
 class TestEnvironHeaders:
     storage_class = ds.EnvironHeaders
 
+    def test_slice_deletion(self):
+        hs = self.storage_class(["Foo", "bar", "BAZ"])
+        del hs[0:2]
+        assert list(hs) == ["BAZ"]
+        assert "foo" not in hs
+        assert "BAR" not in hs
+        assert "baz" in hs
+
     def test_basic_interface(self):
         # this happens in multiple WSGI servers because they
         # use a vary naive way to convert the headers;
@@ -722,6 +754,14 @@ class TestEnvironHeaders:
 
 class TestHeaderSet:
     storage_class = ds.HeaderSet
+
+    def test_slice_deletion(self):
+        hs = self.storage_class(["Foo", "bar", "BAZ"])
+        del hs[0:2]
+        assert list(hs) == ["BAZ"]
+        assert "foo" not in hs
+        assert "BAR" not in hs
+        assert "baz" in hs
 
     def test_basic_interface(self):
         hs = self.storage_class()

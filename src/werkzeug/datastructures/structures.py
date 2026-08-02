@@ -883,9 +883,13 @@ class HeaderSet(cabc.MutableSet[str]):
     def __getitem__(self, idx: t.SupportsIndex) -> str:
         return self._headers[idx]
 
-    def __delitem__(self: te.Self, idx: t.SupportsIndex) -> None:
-        rv = self._headers.pop(idx)
-        self._set.remove(rv.lower())
+    def __delitem__(self: te.Self, idx: t.SupportsIndex | slice) -> None:
+        removed = self._headers[idx]
+        del self._headers[idx]
+        if isinstance(removed, str):
+            removed = [removed]
+        for header in removed:
+            self._set.remove(header.lower())
         if self._on_update is not None:
             self._on_update(self)
 
