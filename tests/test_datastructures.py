@@ -723,6 +723,17 @@ class TestEnvironHeaders:
 class TestHeaderSet:
     storage_class = ds.HeaderSet
 
+    def test_setitem_rejects_duplicate_or_non_string_values(self):
+        hs = self.storage_class(["foo", "bar"])
+
+        with pytest.raises(ValueError, match="duplicate values"):
+            hs[0] = "BAR"
+        assert list(hs) == ["foo", "bar"]
+
+        with pytest.raises(TypeError, match="values must be strings"):
+            hs[0] = 42
+        assert list(hs) == ["foo", "bar"]
+
     def test_basic_interface(self):
         hs = self.storage_class()
         hs.add("foo")
