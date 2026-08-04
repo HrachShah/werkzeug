@@ -890,10 +890,15 @@ class HeaderSet(cabc.MutableSet[str]):
             self._on_update(self)
 
     def __setitem__(self: te.Self, idx: t.SupportsIndex, value: str) -> None:
+        if not isinstance(value, str):
+            raise TypeError("HeaderSet values must be strings")
         old = self._headers[idx]
+        key = value.lower()
+        if key != old.lower() and key in self._set:
+            raise ValueError("HeaderSet cannot contain duplicate values")
         self._set.remove(old.lower())
         self._headers[idx] = value
-        self._set.add(value.lower())
+        self._set.add(key)
         if self._on_update is not None:
             self._on_update(self)
 
