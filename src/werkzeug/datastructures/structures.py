@@ -771,7 +771,14 @@ class HeaderSet(cabc.MutableSet[str]):
         self._headers: list[str] = []
         self._set: set[str] = set()
         self._on_update: cabc.Callable[[HeaderSet], None] | None = None
-        self.update(headers or ())
+        for header in headers or ():
+            if not isinstance(header, str):
+                raise TypeError("HeaderSet values must be strings")
+            key = header.lower()
+            if key in self._set:
+                raise ValueError("HeaderSet cannot contain duplicate values")
+            self._headers.append(header)
+            self._set.add(key)
 
     def add(self, header: str) -> None:
         """Add a new header to the set."""
