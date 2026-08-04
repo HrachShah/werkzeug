@@ -747,6 +747,13 @@ class TestHeaderSet:
             hs.index("missing")
 
         assert hs.index("bar") == 0
+        hs.add("foo")
+        with pytest.raises(TypeError, match="values must be strings"):
+            hs[0] = 42
+        with pytest.raises(ValueError, match="duplicate values"):
+            hs[0] = "FOO"
+        assert list(hs) == ["bar", "foo"]
+
         assert hs
         hs.clear()
         assert not hs
