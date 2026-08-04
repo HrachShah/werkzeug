@@ -723,6 +723,10 @@ class TestEnvironHeaders:
 class TestHeaderSet:
     storage_class = ds.HeaderSet
 
+    def test_constructor_rejects_duplicate_values(self):
+        with pytest.raises(ValueError, match="duplicate values"):
+            self.storage_class(["Foo", "foo"])
+
     def test_basic_interface(self):
         hs = self.storage_class()
         hs.add("foo")

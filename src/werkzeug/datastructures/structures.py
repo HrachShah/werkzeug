@@ -768,9 +768,10 @@ class HeaderSet(cabc.MutableSet[str]):
     """
 
     def __init__(self, headers: cabc.Iterable[str] | None = None) -> None:
-        self._headers = list(headers or ())
-        self._set = {x.lower() for x in self._headers}
+        self._headers: list[str] = []
+        self._set: set[str] = set()
         self._on_update: cabc.Callable[[HeaderSet], None] | None = None
+        self.update(headers or ())
 
     def add(self, header: str) -> None:
         """Add a new header to the set."""
@@ -806,11 +807,14 @@ class HeaderSet(cabc.MutableSet[str]):
         """
         inserted_any = False
         for header in iterable:
+            if not isinstance(header, str):
+                raise TypeError("HeaderSet values must be strings")
             key = header.lower()
-            if key not in self._set:
-                self._headers.append(header)
-                self._set.add(key)
-                inserted_any = True
+            if key in self._set:
+                raise ValueError("HeaderSet cannot contain duplicate values")
+            self._headers.append(header)
+            self._set.add(key)
+            inserted_any = True
         if inserted_any and self._on_update is not None:
             self._on_update(self)
 
