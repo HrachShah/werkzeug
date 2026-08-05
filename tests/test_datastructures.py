@@ -734,6 +734,18 @@ class TestHeaderSet:
             hs[0] = 42
         assert list(hs) == ["foo", "bar"]
 
+    def test_constructor_rejects_non_string_values(self):
+        with pytest.raises(TypeError, match="values must be strings"):
+            self.storage_class(["foo", 42])
+
+    def test_update_rejects_non_string_values_without_partial_state(self):
+        hs = self.storage_class(["foo"])
+
+        with pytest.raises(TypeError, match="values must be strings"):
+            hs.update(["bar", 42])
+
+        assert list(hs) == ["foo", "bar"]
+
     def test_basic_interface(self):
         hs = self.storage_class()
         hs.add("foo")
