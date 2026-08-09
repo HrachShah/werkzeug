@@ -766,6 +766,10 @@ class TestHeaderSet:
         assert hs
         hs.clear()
         assert not hs
+        hs.add("foo")
+        hs.remove("FOO")
+        assert "foo" not in hs
+        assert list(hs) == []
 
 
 class TestImmutableList:
