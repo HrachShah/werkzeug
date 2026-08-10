@@ -740,10 +740,14 @@ class TestHeaderSet:
         assert list(hs) == ["Foo", "BAR"]
         assert hs.as_set(preserve_casing=True) == {"Foo", "BAR"}
 
+        hs.remove("FOO")
+        assert list(hs) == ["BAR"]
+        assert hs.find("bar") == 0
+
         with pytest.raises(IndexError):
             hs.index("missing")
 
-        assert hs.index("bar") == 1
+        assert hs.index("bar") == 0
         assert hs
         hs.clear()
         assert not hs
