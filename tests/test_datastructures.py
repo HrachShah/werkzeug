@@ -748,6 +748,12 @@ class TestHeaderSet:
             hs.index("missing")
 
         assert hs.index("bar") == 0
+
+        hs = self.storage_class(["Foo", "BAR"])
+        with pytest.raises(ValueError):
+            hs[0] = "bar"
+        assert list(hs) == ["Foo", "BAR"]
+
         assert hs
         hs.clear()
         assert not hs

@@ -893,9 +893,13 @@ class HeaderSet(cabc.MutableSet[str]):
 
     def __setitem__(self: te.Self, idx: t.SupportsIndex, value: str) -> None:
         old = self._headers[idx]
-        self._set.remove(old.lower())
+        old_key = old.lower()
+        new_key = value.lower()
+        if old_key != new_key and new_key in self._set:
+            raise ValueError(f"{value!r} is already in the set")
+        self._set.remove(old_key)
         self._headers[idx] = value
-        self._set.add(value.lower())
+        self._set.add(new_key)
         if self._on_update is not None:
             self._on_update(self)
 
